@@ -1,0 +1,59 @@
+palettes:
+  - name: palette
+    fixed-entries:
+      - color: {index: 0, r: 255, g: 0, b: 128}
+      - color: {index: 1, r: 255, g: 255, b: 255}
+      - color: {index: 2, r: 0, g: 0, b: 0}
+      - color: {index: 3, r: 95, g: 205, b: 228}
+    images: automatic
+    
+converts:
+  - name: frog_dance
+    palette: palette
+    transparent-color-index: 0
+    images:
+      - frog/frog_1.png
+      - frog/frog_2.png
+      - frog/frog_3.png
+      - frog/frog_4.png
+      - frog/frog_5.png
+      - frog/frog_6.png
+      - frog/frog_7.png
+      - frog/frog_8.png
+      - frog/frog_9.png
+      
+  - name: frog_blink
+    palette: palette
+    transparent-color-index: 0
+    images:      
+      - frog/frog_10.png
+      - frog/frog_11.png
+      - frog/frog_12.png
+  
+  - name: frog_jump
+    palette: palette
+    transparent-color-index: 0
+    images:
+      - frog/frog_13.png
+      - frog/frog_14.png
+      - frog/frog_15.png
+      - frog/frog_16.png
+      
+  - name: frog_blurp
+    palette: palette
+    transparent-color-index: 0
+    images:      
+      - frog/frog_17.png
+      - frog/frog_18.png
+      - frog/frog_19.png
+    
+outputs:
+  - type: c
+    include-file: frog_gfx.h
+    palettes:
+      - palette
+    converts:
+      - frog_dance
+      - frog_blink
+      - frog_jump
+      - frog_blurp

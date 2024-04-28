@@ -1,0 +1,28 @@
+{
+    "files.associations": {
+        "*.c": "c",
+        "oxy_gfx.h": "c",
+        "oxy_cursor.h": "c",
+        "globals.h": "c",
+        "oxy_gui.h": "c",
+        "button.h": "c",
+        "util.h": "c",
+        "window.h": "c"
+    },
+    "cSpell.words": [
+        "Blit",
+        "Colorbox",
+        "dbgout",
+        "Hmargin",
+        "Hotspot",
+        "maxchar",
+        "minimizable",
+        "Repalettize",
+        "Vmargin",
+        "Xalign",
+        "Xlibc",
+        "Yalign",
+        "ytojeb",
+        "ZUPKFC"
+    ]
+}
