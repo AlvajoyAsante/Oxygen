@@ -1,10 +1,11 @@
+![Oxygen running on the TI-84 Plus CE](https://i.imgur.com/yFg0fCF.gif)
 # Oxygen
 
 [![Latest release](https://img.shields.io/github/v/release/AlvajoyAsante/Oxygen?label=release)](https://github.com/AlvajoyAsante/Oxygen/releases)
 [![Open issues](https://img.shields.io/github/issues/AlvajoyAsante/Oxygen)](https://github.com/AlvajoyAsante/Oxygen/issues)
 [![License: GPL-3.0](https://img.shields.io/github/license/AlvajoyAsante/Oxygen)](LICENSE)
 
-![Oxygen running on the TI-84 Plus CE](https://i.imgur.com/yFg0fCF.gif)
+
 
 > *Breathe new life into your projects with Oxygen.*
 
