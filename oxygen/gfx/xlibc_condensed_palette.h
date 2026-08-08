@@ -5,8 +5,8 @@
 extern "C" {
 #endif
 
-#define sizeof_xlibc_condensed_palette 64
-extern unsigned char xlibc_condensed_palette[64];
+#define sizeof_xlibc_condensed_palette 62
+extern unsigned char xlibc_condensed_palette[62];
 
 #ifdef __cplusplus
 }
