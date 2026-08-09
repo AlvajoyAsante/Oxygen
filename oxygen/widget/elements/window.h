@@ -36,11 +36,13 @@ extern "C"
 {
 #endif /* __cplusplus */
 
+	typedef void (*oxy_window_background_callback_t)(void *arg);
+
 	/**
 	 * @brief A window widget, struct for storing window widget data
 	 *
 	 * The window widget is represented by the oxy_window_t struct, which contains fields for storing the widget's title,
-	 * width, and height. The oxy_UpdateWindow, oxy_RenderWindow, oxy_ResizeWindow, oxy_IsWindowVisable, and oxy_IsWindowViewable functions
+	 * width, and height. The oxy_UpdateWindow, oxy_RenderWindow, oxy_ResizeWindow, oxy_IsWindowVisible, and oxy_IsWindowViewable functions
 	 * can be used to update, render, resize, check the visibility, and check the viewability of the window widget, respectively.
 	 *
 	 * @param widget The base widget structure for this window widget
@@ -63,6 +65,11 @@ extern "C"
 
 		bool closeable;
 		bool minimizable;
+		bool maximizable;
+		bool minimized;
+		bool maximized;
+		struct oxy_position_t restore_position;
+		struct oxy_sizeinfo_t restore_size;
 
 		void (*on_close)(void *);
 
@@ -107,6 +114,32 @@ extern "C"
 	 */
 	void oxy_ResizeWindow(struct oxy_widget_t *widget, uint16_t width, uint8_t height);
 
+	void oxy_SetWindowFeatures(struct oxy_window_t *window, bool closeable,
+							 bool minimizable, bool maximizable, bool resizable);
+
+	bool oxy_MinimizeWindow(struct oxy_window_t *window);
+
+	bool oxy_MaximizeWindow(struct oxy_window_t *window);
+
+	bool oxy_RestoreWindow(struct oxy_window_t *window);
+
+	void oxy_SetWindowManagerBackground(oxy_window_background_callback_t callback,
+									void *arg);
+
+	struct oxy_window_t *oxy_GetWindowAt(int x, int y);
+
+	struct oxy_window_t *oxy_GetFocusedWindow(void);
+
+	bool oxy_BringWindowToFront(struct oxy_window_t *window);
+
+	bool oxy_MoveWindow(struct oxy_window_t *window, int x, int y);
+
+	bool oxy_UpdateWindowManager(bool pointer_down);
+
+	void oxy_RenderWindowBackground(void);
+
+	bool oxy_WindowManagerNeedsRedraw(void);
+
 	/**
 	 * @brief Check if a window is currently visible.
 	 *
@@ -116,7 +149,7 @@ extern "C"
 	 *
 	 * @return true if the window is visible, false otherwise.
 	 */
-	bool oxy_IsWindowVisable(struct oxy_window_t *window);
+	bool oxy_IsWindowVisible(struct oxy_window_t *window);
 
 	/**
 	 * @brief Check if a window is viewable from another window.
