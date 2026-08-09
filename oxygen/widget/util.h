@@ -50,6 +50,8 @@ extern "C"
      */
     bool oxy_InitWidget(struct oxy_widget_t *widget, uint8_t type);
 
+    bool oxy_FreeWidget(struct oxy_widget_t **widget);
+
     // Cursor
     /**
      * @brief Set widget cursor description

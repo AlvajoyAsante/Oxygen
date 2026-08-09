@@ -30,7 +30,7 @@ void oxy_SetWidgetRightClick(struct oxy_widget_t *widget, void *function, void *
 	widget->cursor_info.right_arg = arg;
 }
 
-void oxy_SeWidgetLeftClick(struct oxy_widget_t *widget, void *function, void *arg)
+void oxy_SetWidgetLeftClick(struct oxy_widget_t *widget, void *function, void *arg)
 {
 	widget->cursor_info.left_click = function;
 	widget->cursor_info.left_arg = arg;
@@ -103,6 +103,9 @@ static void *oxy_ReturnUpdateByType(uint8_t type)
 	case OXY_MENU_TYPE:
 		return oxy_UpdateMenu;
 
+	case OXY_RECTANGLE_TYPE:
+		return oxy_UpdateRectangle;
+
 	case OXY_SCROLLBAR_TYPE:
 		return oxy_UpdateScrollbar;
 
@@ -111,6 +114,9 @@ static void *oxy_ReturnUpdateByType(uint8_t type)
 
 	case OXY_SWITCH_TYPE:
 		return oxy_UpdateSwitch;
+
+	case OXY_LABEL_TYPE:
+		return oxy_UpdateLabel;
 
 	case OXY_ENTRY_TYPE:
 		return oxy_UpdateEntry;
@@ -237,14 +243,19 @@ bool oxy_InitWidget(struct oxy_widget_t *widget, uint8_t type)
 	if (!widget || !oxy_DoesTypeExist(type))
 		return 0;
 
+	memset(widget, 0, sizeof(*widget));
+
 	// Set simple widget information
 	widget->child = NULL;
 	widget->type = type;
 	widget->state.selected = false;
 	widget->state.visible = true;
+	widget->state.redraw = true;
 	widget->state.clickable = oxy_ReturnClickableByType(type);
 	widget->update = oxy_ReturnUpdateByType(type);
 	widget->render = oxy_ReturnRenderByType(type);
+	widget->size.width = 20;
+	widget->size.height = 20;
 	oxy_SetDefaultColors(widget, type);
 
 	// Set up the basic information for the widget based on its type
@@ -275,8 +286,8 @@ bool oxy_InitWidget(struct oxy_widget_t *widget, uint8_t type)
 	case OXY_DROPDOWN_TYPE:
 	{
 		struct oxy_dropdown_t *dropdown = (struct oxy_dropdown_t *)widget;
-		// dropdown->items = NULL;
-		// dropdown->selected = 0;
+		dropdown->menu = NULL;
+		dropdown->button = NULL;
 	}
 	break;
 
@@ -362,7 +373,7 @@ bool oxy_InitWidget(struct oxy_widget_t *widget, uint8_t type)
 		label->start_line = 0;
 		label->max_lines = 0;
 		label->wrap = false;
-		widget->size.width = gfx_GetStringWidth(label->text);
+		widget->size.width = 0;
 		widget->size.height = 9;
 	}
 	break;
@@ -371,6 +382,7 @@ bool oxy_InitWidget(struct oxy_widget_t *widget, uint8_t type)
 	{
 		struct oxy_entry_t *entry = (struct oxy_entry_t *)widget;
 		entry->text = NULL;
+		entry->mode = OXY_ENTRY_MODE_UPPER;
 		entry->cursor_pos = 0;
 		entry->max_chars = 0;
 		entry->password = false;
@@ -385,6 +397,14 @@ bool oxy_InitWidget(struct oxy_widget_t *widget, uint8_t type)
 		// window->child = NULL;
 		window->closeable = true;
 		window->minimizable = true;
+		window->maximizable = true;
+		window->minimized = false;
+		window->maximized = false;
+		window->restore_position = widget->position;
+		window->restore_size = widget->size;
+		widget->resize.resizable = true;
+		widget->resize.min_width = 80;
+		widget->resize.min_height = 40;
 		window->on_close = NULL;
 		window->close_button = NULL;
 		window->minimize_button = NULL;
@@ -410,7 +430,7 @@ static void oxy_FreeWidgetByType(struct oxy_widget_t **widget, uint8_t type)
 
 	case OXY_BUTTON_TYPE:
 	{
-		struct oxy_button_t *button = (struct oxy_button_t *)widget;
+		struct oxy_button_t *button = (struct oxy_button_t *)*widget;
 		if (button->label)
 		{
 			free(button->label);
@@ -427,28 +447,27 @@ static void oxy_FreeWidgetByType(struct oxy_widget_t **widget, uint8_t type)
 
 	
 	case OXY_WINDOW_TYPE:
-		struct oxy_window_t *window = (struct oxy_window_t *)widget;
+	{
+		struct oxy_window_t *window = (struct oxy_window_t *)*widget;
 
 		/* Free Windows Buttons */
 		if (window->close_button)
 		{
-			oxy_FreeWidget(window->close_button);
-			window->close_button = NULL;
+			oxy_FreeWidget((struct oxy_widget_t **)&window->close_button);
 		}
 
 		if (window->minimize_button)
 		{
-			oxy_FreeWidget(window->minimize_button);
-			window->minimize_button = NULL;
+			oxy_FreeWidget((struct oxy_widget_t **)&window->minimize_button);
 		}
 
 		if (window->maximize_button)
 		{
-			oxy_FreeWidget(window->maximize_button);
-			window->maximize_button = NULL;
+			oxy_FreeWidget((struct oxy_widget_t **)&window->maximize_button);
 		}
 
 		break;
+	}
 
 	default:
 		break;
@@ -460,7 +479,7 @@ bool oxy_FreeWidget(struct oxy_widget_t **widget)
 	int i = 0;
 
 	/* Check if there isn't anything in the widget */
-	if (widget == NULL)
+	if (widget == NULL || *widget == NULL)
 	{
 		return false;
 	}
@@ -484,7 +503,7 @@ bool oxy_FreeWidget(struct oxy_widget_t **widget)
 
 	/* Free Parent */
 	free(*widget);
-	(*widget)->child = NULL;
+	*widget = NULL;
 
 	return true;
 }
@@ -551,12 +570,15 @@ void oxy_SetWidgetChildren(struct oxy_widget_t *widget, struct oxy_widget_t **ch
 
 void oxy_AlignWidgetToWidget(struct oxy_widget_t *src_widget, struct oxy_widget_t *dest_widget, uint8_t x_align, uint8_t y_align)
 {
+	if (!src_widget || !dest_widget)
+		return;
+
 	src_widget->position.x = dest_widget->position.x;
 	src_widget->position.y = dest_widget->position.y;
 
 	if (x_align == OXY_ALIGN_RIGHT)
 	{ // X aligned to Right
-		src_widget->position.x += ((dest_widget->size.width - src_widget->size.width) % 2);
+		src_widget->position.x += dest_widget->size.width - src_widget->size.width;
 	}
 	else
 	{
@@ -565,7 +587,7 @@ void oxy_AlignWidgetToWidget(struct oxy_widget_t *src_widget, struct oxy_widget_
 
 	if (y_align == OXY_ALIGN_BOTTOM)
 	{ // Y aligned to Bottom
-		src_widget->position.y += ((dest_widget->size.height - src_widget->size.height) % 2);
+		src_widget->position.y += dest_widget->size.height - src_widget->size.height;
 	}
 	else
 	{
@@ -575,7 +597,7 @@ void oxy_AlignWidgetToWidget(struct oxy_widget_t *src_widget, struct oxy_widget_
 
 void oxy_AlignChildren(struct oxy_widget_t *widget)
 {
-	if (!widget || widget->type == OXY_MENU_TYPE)
+	if (!widget || !widget->child || widget->type == OXY_MENU_TYPE)
 		return;
 
 	for (struct oxy_widget_t **child = widget->child; *child; ++child)
