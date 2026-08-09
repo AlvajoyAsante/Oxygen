@@ -169,7 +169,6 @@ static void oxy_UpdateMouse(void)
 				curr_detect->right_click(curr_detect->left_arg);
 			}else curr_detect->right_click(NULL);
 		}
-		return;
 	}
 	
 	if ((kb_Data[1] & kb_Mode) && (hover_index != -1)) { // Left Click
