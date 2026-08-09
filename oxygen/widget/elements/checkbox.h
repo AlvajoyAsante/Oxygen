@@ -46,7 +46,7 @@ extern "C"
 	 */
 	struct oxy_checkbox_t
 	{
-		struct oxy_widget_t *widget;
+		struct oxy_widget_t widget;
 		bool on;
 	};
 
