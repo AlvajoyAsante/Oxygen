@@ -36,6 +36,28 @@ extern "C"
 {
 #endif /* __cplusplus */
 
+    struct oxy_input_event_t
+    {
+        int pointer_x;
+        int pointer_y;
+        uint8_t scan_code;
+        bool primary_down;
+        bool primary_pressed;
+        bool primary_released;
+        bool secondary_down;
+        bool secondary_pressed;
+        bool secondary_released;
+        struct oxy_widget_t *hovered;
+        struct oxy_widget_t *focused;
+        struct oxy_widget_t *captured;
+    };
+
+    const struct oxy_input_event_t *oxy_GetInputEvent(void);
+    void oxy_FocusWidget(struct oxy_widget_t *widget);
+    bool oxy_IsWidgetFocused(const struct oxy_widget_t *widget);
+    bool oxy_CaptureWidget(struct oxy_widget_t *widget);
+    void oxy_ReleaseWidgetCapture(struct oxy_widget_t *widget);
+
     /**
      * @brief Updates widget in given stack
      *
