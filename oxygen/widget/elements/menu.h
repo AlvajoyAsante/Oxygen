@@ -65,6 +65,8 @@ extern "C"
         uint8_t  columns;
     };
 
+    void oxy_AlignMenu(struct oxy_menu_t *menu);
+
     /**
      * @brief Update a menu widget based on user input or other events.
      *
