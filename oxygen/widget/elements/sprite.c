@@ -7,7 +7,7 @@ void oxy_RenderSprite(struct oxy_widget_t *widget)
 {
     struct oxy_sprite_t *sprite = (struct oxy_sprite_t *)widget;
 
-    if (widget->state.visible)
+    if (widget->state.visible && sprite->spr)
     {
         if (sprite->transparent)
         {
