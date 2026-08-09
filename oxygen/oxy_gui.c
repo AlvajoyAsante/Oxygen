@@ -210,6 +210,7 @@ void oxy_PrintDate(uint16_t x, uint8_t y)
 void oxy_PrintBatteryStatus(uint16_t x, uint8_t y)
 {
 	int bat_status;
+	uint8_t transparent_color;
 	bat_status = boot_GetBatteryStatus();
 	
 	/* Rendering battery outline */
@@ -227,4 +228,10 @@ void oxy_PrintBatteryStatus(uint16_t x, uint8_t y)
 	}
 	
 	gfx_FillRectangle(x + 2, y + 2, bat_status, 6);
+
+	if (boot_BatteryCharging()) {
+		transparent_color = gfx_SetTransparentColor(0xF0);
+		gfx_TransparentSprite(charge, x + 2, y + 2);
+		gfx_SetTransparentColor(transparent_color);
+	}
 }

@@ -1,48 +1,52 @@
+/**
+ * @file oxygen.h
+ * @brief Aggregates the public Oxygen subsystem headers.
+ */
 #ifndef OXYGEN_H
 #define OXYGEN_H
 
 /**
- * Oxygen virtual file system.
+ * Virtual file system API.
  */
 #include "oxy_files.h"
 
 /**
- * Oxygen shapes and sprite routines.
+ * Drawing and sprite utilities.
  */
 #include "oxy_gfx.h"
 
 /**
- * Oxygen graphical interface routines.
+ * Graphical input helpers and HUD widgets.
  */
 #include "oxy_gui.h"
 
 /**
- * Oxygen mouse system.
+ * Pointer state and hover tracking.
  */
 #include "oxy_mouse.h"
 
 /**
- * Oxygen Notification system.
+ * Notification queue and rendering helpers.
  */
 #include "oxy_notify.h"
 
 /**
- * Oxygen one app var saving.
+ * AppVar-backed persistence helpers.
  */
 #include "oxy_save.h"
 
 /**
- * Oxygen virtual user system.
+ * Virtual user management.
  */
 #include "oxy_users.h"
 
 /**
- * Oxygen window system.
+ * Windowing and form helpers.
  */
 #include "oxy_gtk.h"
 
 /**
- * Oxygen sprites.
+ * Bundled Oxygen sprite assets.
  */
 #include "gfx/oxy_sprites.h"
 

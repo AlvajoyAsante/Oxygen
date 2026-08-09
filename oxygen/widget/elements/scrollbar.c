@@ -68,9 +68,9 @@ void oxy_RenderScrollbar(struct oxy_widget_t *widget)
     if (!widget->state.visible)
         return;
 
-    oxy_OutlinedRectangle(widget->position.x, widget->position.y,
-                          widget->size.width, widget->size.height,
-                          widget->color.unselected, widget->color.color_a);
+    oxy_OutlinedRoundRectangle(widget->position.x, widget->position.y,
+                               widget->size.width, widget->size.height,
+                               widget->color.unselected, widget->color.color_a);
 
     int range = scrollbar->max_value - scrollbar->min_value;
     int offset = range > 0 ? scrollbar->current_value - scrollbar->min_value : 0;
@@ -79,17 +79,19 @@ void oxy_RenderScrollbar(struct oxy_widget_t *widget)
     {
         int thumb_height = widget->size.height < 8 ? widget->size.height : 8;
         int travel = widget->size.height - thumb_height;
-        gfx_FillRectangle(widget->position.x + 1,
-                          widget->position.y + 1 + (range > 0 ? travel * offset / range : 0),
-                          widget->size.width - 2, thumb_height > 2 ? thumb_height - 2 : thumb_height);
+        oxy_FillRoundRectangle(widget->position.x + 1,
+                       widget->position.y + 1 + (range > 0 ? travel * offset / range : 0),
+                       widget->size.width - 2,
+                       thumb_height > 2 ? thumb_height - 2 : thumb_height, 0);
     }
     else
     {
         int thumb_width = widget->size.width < 8 ? widget->size.width : 8;
         int travel = widget->size.width - thumb_width;
-        gfx_FillRectangle(widget->position.x + 1 + (range > 0 ? travel * offset / range : 0),
-                          widget->position.y + 1,
-                          thumb_width > 2 ? thumb_width - 2 : thumb_width, widget->size.height - 2);
+        oxy_FillRoundRectangle(widget->position.x + 1 + (range > 0 ? travel * offset / range : 0),
+                       widget->position.y + 1,
+                       thumb_width > 2 ? thumb_width - 2 : thumb_width,
+                       widget->size.height - 2, 0);
     }
 
     widget->state.redraw = false;

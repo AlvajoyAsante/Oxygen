@@ -1,16 +1,24 @@
-#include "oxy_mouse.h"
-#include "gfx/oxy_sprites.h"
-
 #include <tice.h>
 #include <string.h>
 #include <graphx.h>
 #include <keypadc.h>
 
+#include "oxy_mouse.h"
+#include "gfx/oxy_sprites.h"
+
+// K.I.S.S. PRINCIPLE
+
 struct oxy_detect_t *oxy_detect;
 struct oxy_mouse_t oxy_mouse;
 int hover_index;
 
+// Local functions
+bool oxy_DetectRect(int ix, int iy, int iw, int ih);
+void oxy_UpdateMouse(void);
 
+/**
+ * This function is used to init mouse variables.
+ */
 void oxy_InitMouse(void)
 {
 	oxy_mouse.x = (LCD_WIDTH - cursorA_width)/ 2;
@@ -20,18 +28,21 @@ void oxy_InitMouse(void)
 	
 	oxy_mouse.scroll_X = oxy_mouse.scroll_Y = oxy_mouse.hover_amount = 0;
 	oxy_mouse.clicked_index = -2;
-	oxy_mouse.captured_index = -1;
-	oxy_mouse.cursor = OXY_MOUSE_CURSOR_DEFAULT;
-	oxy_mouse.cursor_override = false;
 }
 
+/**
+ * This function is used to reset the mouse scroll and clicked index.
+ */
 void oxy_ResetMouse(void)
 {
 	oxy_mouse.scroll_X = oxy_mouse.scroll_Y = 0;
 	oxy_mouse.clicked_index = -2;
 }
 
-
+/**
+ * This function is used to create a some what button called a hover spot.
+ */
+// returns: Hover Index
 uint8_t oxy_AddHover(uint16_t x, uint8_t y, uint16_t w, uint8_t h)
 {
 	struct oxy_detect_t *curr_detect;
@@ -50,30 +61,13 @@ uint8_t oxy_AddHover(uint16_t x, uint8_t y, uint16_t w, uint8_t h)
 	curr_detect->right_click = curr_detect->right_arg = curr_detect->left_click = curr_detect->left_arg = NULL;
 	curr_detect->description = NULL;
 	curr_detect->data = 0;
-	curr_detect->hover_cursor = OXY_MOUSE_CURSOR_POINTER;
-	curr_detect->active_cursor = OXY_MOUSE_CURSOR_POINTER;
 	
 	return oxy_mouse.hover_amount - 1; // Returns the index "ptr" to hoverspot
 }
 
-void oxy_SetHoverBounds(uint8_t index, uint16_t x, uint8_t y,
-						uint16_t width, uint8_t height)
-{
-	if (index >= oxy_mouse.hover_amount) return;
-	oxy_detect[index].x = x;
-	oxy_detect[index].y = y;
-	oxy_detect[index].w = width;
-	oxy_detect[index].h = height;
-}
-
-void oxy_SetHoverCursors(uint8_t index, enum oxy_mouse_cursor_t hover_cursor,
-						 enum oxy_mouse_cursor_t active_cursor)
-{
-	if (index >= oxy_mouse.hover_amount) return;
-	oxy_detect[index].hover_cursor = hover_cursor;
-	oxy_detect[index].active_cursor = active_cursor;
-}
-
+/**
+ * This function is used to remove a hover spot from index.
+ */
 bool oxy_RemoveHover(uint8_t index)
 {
 	if (oxy_mouse.hover_amount > 0){
@@ -83,13 +77,18 @@ bool oxy_RemoveHover(uint8_t index)
     } else return 0;
 }
 
+/**
+ * This function is used to remove all hover spots from hover stack.
+ */
 void oxy_RemoveAllHover(void)
 {
 	oxy_detect = realloc(oxy_detect, sizeof(struct oxy_detect_t));
 	oxy_mouse.hover_amount = 0;
-	oxy_mouse.captured_index = -1;
 }
 
+/**
+ * This function is used to remove all hover spots below an index.
+ */
 void oxy_RemoveAllBelow(uint8_t index)
 {
 	uint8_t size = oxy_mouse.hover_amount;
@@ -101,6 +100,9 @@ void oxy_RemoveAllBelow(uint8_t index)
 	}
 }
 
+/**
+ * This function is used to remove all hover spots above an index.
+ */
 void oxy_RemoveAllAbove(uint8_t index)
 {	
 	if (index - 1 < 0) return;
@@ -110,6 +112,12 @@ void oxy_RemoveAllAbove(uint8_t index)
 	}
 }
 
+// sets a hover description for the a hover area 
+/**
+ * experimental the function can crash mouse loop
+ * This function is used to add a description over a hover spot and is only visable
+ * when a the mouse is over the hover spot. (Look into "oxy_RenderMouse" for more info)
+ */
 bool oxy_SetHoverDescription(char *text, uint8_t index)
 {
 	if (oxy_mouse.hover_amount > 0){
@@ -120,11 +128,20 @@ bool oxy_SetHoverDescription(char *text, uint8_t index)
 	return 0;
 }
 
+// Returns Clicked index
+/**
+ * This function is used to return a clicked index. if the function returns a negative
+ * number then no hover spot as clicked
+ */
 int oxy_ReturnClickedIndex(void)
 {
 	return oxy_mouse.clicked_index;
 }
 
+/**
+ * This function is used to set a hover clicked action.
+ * All function must have this format "VOID FUNCTION_NAME(VOID* ARGMENT)"
+ */
 void oxy_SetRightClick(void *function, void *arg, uint8_t index)
 {
 	uint8_t size = oxy_mouse.hover_amount;
@@ -135,6 +152,10 @@ void oxy_SetRightClick(void *function, void *arg, uint8_t index)
 	}
 }
 
+/**
+ * This function is used to set a hover clicked action.
+ * All function must have this format "VOID FUNCTION_NAME(VOID* ARGMENT)"
+ */
 void oxy_SetLeftClick(void *function, void *arg, uint8_t index)
 {
 	uint8_t size = oxy_mouse.hover_amount;
@@ -145,26 +166,29 @@ void oxy_SetLeftClick(void *function, void *arg, uint8_t index)
 	}
 }
 
+/*void oxy_SetRightClickKey()
+{
+	
+}
+
+void oxy_SetLeftClickKey()
+{
+	
+}*/
+
 void oxy_SetMouseSpeed(uint8_t speed) 
 {
-	if (speed < 10 && speed > 1) 
+	if (speed < 10 && speed > 1)
 		oxy_mouse.speed = speed;
 }
 
-void oxy_SetMouseCursor(enum oxy_mouse_cursor_t cursor)
-{
-	oxy_mouse.cursor = cursor;
-	oxy_mouse.cursor_override = true;
-}
 
-
-static bool oxy_DetectRect(int ix, int iy, int iw, int ih)
-{
-	// This function checks if the oxy_mouse x and y pos is in the given x,y,x+w,y+h. (I Hope that makes sense.)
-	return (bool)(oxy_mouse.x > ix && oxy_mouse.x < ix + iw && oxy_mouse.y > iy && oxy_mouse.y < iy + ih);
-}
-
-static int oxy_DetectHover(void)
+// Returns Index
+/**
+ * This function is used to detect if the mouse is over a hover spot.
+ * The function is mainly used in "oxy_DetectHover".
+ */
+int oxy_DetectHover(void)
 {
 	if (!oxy_mouse.hover_amount) return -1;
 	
@@ -176,7 +200,64 @@ static int oxy_DetectHover(void)
 	return -1; // Throws an error or nothing found
 }
 
-static void oxy_UpdateMouse(void)
+// Displaying oxy_mouse
+/**
+ * This function renders the mouse (must be put in a loop to work).
+ */
+void oxy_RenderMouse(void)
+{
+	uint16_t des_x;
+	uint8_t des_y;
+	gfx_sprite_t *mouse_buff;
+	gfx_sprite_t *text_buff = NULL;
+	
+	mouse_buff = gfx_MallocSprite(cursorA_width, cursorA_height);
+	gfx_GetSprite(mouse_buff, oxy_mouse.x, oxy_mouse.y);
+	
+	kb_Scan();
+	
+	hover_index = oxy_DetectHover();  // Checks hover data
+	
+	gfx_SetTransparentColor(0xf0);
+	
+	if (hover_index == -1) {
+		gfx_TransparentSprite(cursorA, oxy_mouse.x, oxy_mouse.y);
+	}else{
+		gfx_TransparentSprite(cursorB, oxy_mouse.x, oxy_mouse.y);
+		
+		if (oxy_detect[hover_index].description != NULL) {
+			text_buff = gfx_MallocSprite(gfx_GetStringWidth(oxy_detect[hover_index].description), 9);
+			
+			if (oxy_mouse.x <= LCD_WIDTH/2) des_x = oxy_mouse.x + cursorB_width + 1;
+			if (oxy_mouse.x > LCD_WIDTH/2) des_x = oxy_mouse.x - gfx_GetStringWidth(oxy_detect[hover_index].description) - 8;
+			if (oxy_mouse.y <= LCD_HEIGHT/2) des_y =  oxy_mouse.y + cursorB_height + 1;
+			if (oxy_mouse.y > LCD_HEIGHT/2)	des_y =  oxy_mouse.y + 1;
+			
+			gfx_GetSprite(text_buff, des_x, des_y);
+			gfx_PrintStringXY(oxy_detect[hover_index].description, des_x, des_y);
+		}
+	}
+	
+	gfx_Blit(1);
+	
+	/*Update buffer here*/ 
+	gfx_Sprite(mouse_buff, oxy_mouse.x, oxy_mouse.y);
+	free(mouse_buff);
+	
+	if (text_buff != NULL) {
+		gfx_Sprite(text_buff, des_x, des_y);
+		free(text_buff);
+	}
+		
+	
+	oxy_UpdateMouse();
+}
+
+// Keys for movement and more
+/**
+ * This function just separates mouse keys from "RenderMouse".
+ */
+void oxy_UpdateMouse(void)
 {
 	struct oxy_detect_t *curr_detect;
 	
@@ -184,12 +265,6 @@ static void oxy_UpdateMouse(void)
 	key = kb_Data[7];
 	
 	kb_Scan();
-	if (kb_Data[6] & kb_Enter || kb_Data[1] & kb_2nd) {
-		if (oxy_mouse.captured_index < 0 && hover_index >= 0)
-			oxy_mouse.captured_index = hover_index;
-	} else {
-		oxy_mouse.captured_index = -1;
-	}
 	
 	if (kb_Data[6] & kb_Clear) {
 		oxy_mouse.clicked_index = -3; // Returns a -3 for Clear clicked
@@ -205,6 +280,7 @@ static void oxy_UpdateMouse(void)
 				curr_detect->right_click(curr_detect->left_arg);
 			}else curr_detect->right_click(NULL);
 		}
+		return;
 	}
 	
 	if ((kb_Data[1] & kb_Mode) && (hover_index != -1)) { // Left Click
@@ -298,71 +374,11 @@ static void oxy_UpdateMouse(void)
 	oxy_mouse.scroll_Y = oxy_mouse.scroll_Y * .9;
 }
 
-void oxy_RenderMouse(void)
+/**
+ * This function detected if the mouse position is in the given width and height. 
+ */
+bool oxy_DetectRect(int ix, int iy, int iw, int ih)
 {
-	uint16_t des_x;
-	uint8_t des_y;
-	gfx_sprite_t *mouse_buff;
-	gfx_sprite_t *text_buff = NULL;
-	
-	mouse_buff = gfx_MallocSprite(cursorA_width, cursorA_height);
-	gfx_GetSprite(mouse_buff, oxy_mouse.x, oxy_mouse.y);
-	
-	kb_Scan();
-	
-	hover_index = oxy_DetectHover();  // Checks hover data
-	
-	gfx_SetTransparentColor(0xf0);
-	if (!oxy_mouse.cursor_override &&
-		oxy_mouse.cursor == OXY_MOUSE_CURSOR_DEFAULT) {
-		if (oxy_mouse.captured_index >= 0 &&
-			oxy_mouse.captured_index < oxy_mouse.hover_amount)
-			oxy_mouse.cursor = oxy_detect[oxy_mouse.captured_index].active_cursor;
-		else if (hover_index >= 0)
-			oxy_mouse.cursor = oxy_detect[hover_index].hover_cursor;
-	}
-	
-	if (oxy_mouse.cursor == OXY_MOUSE_CURSOR_GRAB) {
-		gfx_TransparentSprite(cursorC, oxy_mouse.x, oxy_mouse.y);
-	} else if (oxy_mouse.cursor == OXY_MOUSE_CURSOR_RESIZE_VERTICAL) {
-		gfx_TransparentSprite(cursorE, oxy_mouse.x, oxy_mouse.y);
-	} else if (oxy_mouse.cursor == OXY_MOUSE_CURSOR_RESIZE_HORIZONTAL) {
-		gfx_TransparentSprite(cursorD, oxy_mouse.x, oxy_mouse.y);
-	} else if (oxy_mouse.cursor == OXY_MOUSE_CURSOR_POINTER) {
-		gfx_TransparentSprite(cursorB, oxy_mouse.x, oxy_mouse.y);
-	} else {
-		gfx_TransparentSprite(cursorA, oxy_mouse.x, oxy_mouse.y);
-	}
-
-	if (hover_index != -1 &&
-		oxy_detect[hover_index].description != NULL) {
-		text_buff = gfx_MallocSprite(gfx_GetStringWidth(oxy_detect[hover_index].description), 9);
-			
-		if (oxy_mouse.x <= LCD_WIDTH/2) des_x = oxy_mouse.x + cursorB_width + 1;
-		if (oxy_mouse.x > LCD_WIDTH/2) des_x = oxy_mouse.x - gfx_GetStringWidth(oxy_detect[hover_index].description) - 8;
-		if (oxy_mouse.y <= LCD_HEIGHT/2) des_y =  oxy_mouse.y + cursorB_height + 1;
-		if (oxy_mouse.y > LCD_HEIGHT/2)	des_y =  oxy_mouse.y + 1;
-			
-		gfx_GetSprite(text_buff, des_x, des_y);
-		gfx_PrintStringXY(oxy_detect[hover_index].description, des_x, des_y);
-	}
-	
-	gfx_Blit(1);
-	
-	/*Update buffer here*/ 
-	gfx_Sprite(mouse_buff, oxy_mouse.x, oxy_mouse.y);
-	free(mouse_buff);
-	
-	if (text_buff != NULL) {
-		gfx_Sprite(text_buff, des_x, des_y);
-		free(text_buff);
-	}
-		
-	
-	oxy_UpdateMouse();
-	oxy_mouse.cursor = OXY_MOUSE_CURSOR_DEFAULT;
-	oxy_mouse.cursor_override = false;
+	// This function checks if the oxy_mouse x and y pos is in the given x,y,x+w,y+h. (I Hope that makes sense.)
+	return (bool)(oxy_mouse.x > ix && oxy_mouse.x < ix + iw && oxy_mouse.y > iy && oxy_mouse.y < iy + ih);
 }
-
-
-

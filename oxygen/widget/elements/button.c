@@ -107,8 +107,9 @@ void oxy_RenderButton(struct oxy_widget_t *widget)
     }
 
     // Render the button
-    oxy_OutlinedRectangle(widget->position.x, widget->position.y, widget->size.width, widget->size.height,
-                          rect_color, widget->color.color_a);
+    oxy_OutlinedRoundRectangle(widget->position.x, widget->position.y,
+                               widget->size.width, widget->size.height,
+                               rect_color, widget->color.color_a);
 
     oxy_SetTextColor(text_fg, text_bg);
 
@@ -118,6 +119,8 @@ void oxy_RenderButton(struct oxy_widget_t *widget)
 
     if (button->label)
     {
+		button->label->widget.state.selected = widget->state.selected;
+		button->label->widget.state.clicked = widget->state.clicked;
         button->label->widget.render(&button->label->widget);
     }
 

@@ -1,5 +1,7 @@
 #include "oxy_gfx.h"
 #include "oxy_gtk.h"
+#include "oxy_mouse.h"
+#include "oxy_widget.h"
 
 #include <tice.h>
 #include <debug.h>
@@ -10,16 +12,36 @@
 #include <fileioc.h>
 #include <stdlib.h>
 
-uint8_t _getWordWidth(char *word);
-bool _iscntrl(int c);
-
 struct gtk_wm_t gtk_wm;
 
 enum {
 	OXY_GTK_DRAG_NONE,
 	OXY_GTK_DRAG_MOVE,
-	OXY_GTK_DRAG_RESIZE
+	OXY_GTK_DRAG_RESIZE,
+	OXY_GTK_DRAG_SCROLL
 };
+
+static int oxy_GtkViewportHeight(const struct gtk_window_t *window)
+{
+	int height = window->widget.size.height - 20;
+	return height > 1 ? height : 1;
+}
+
+static int oxy_GtkMaxScroll(const struct gtk_window_t *window)
+{
+	int maximum = window->content_height - oxy_GtkViewportHeight(window);
+	return maximum > 0 ? maximum : 0;
+}
+
+static bool oxy_GtkScrollbarContains(const struct gtk_window_t *window,
+									 int x, int y)
+{
+	return !window->minimized && oxy_GtkMaxScroll(window) > 0 &&
+		x >= window->widget.position.x + window->widget.size.width - 16 &&
+		x < window->widget.position.x + window->widget.size.width - 2 &&
+		y >= window->widget.position.y + 16 &&
+		y < window->widget.position.y + 16 + oxy_GtkViewportHeight(window);
+}
 
 static bool oxy_GtkWindowContains(const struct gtk_window_t *window, int x, int y)
 {
@@ -107,6 +129,10 @@ struct gtk_window_t* oxy_CreateWindow(char title[9], int x, uint8_t y, int width
 	window->backing_valid = false;
 	window->render_content = NULL;
 	window->render_arg = NULL;
+	window->hit_test_content = NULL;
+	window->hit_test_arg = NULL;
+	window->content_height = 0;
+	window->scroll_offset = 0;
 	if (!oxy_RegisterGtkWindow(window)) {
 		free(window);
 		return NULL;
@@ -135,6 +161,214 @@ void oxy_SetGtkWindowRenderer(struct gtk_window_t *window,
 	window->render_content = callback;
 	window->render_arg = arg;
 	gtk_wm.dirty = true;
+}
+
+void oxy_SetGtkWindowHitTest(struct gtk_window_t *window,
+							 oxy_gtk_hit_test_callback_t callback, void *arg)
+{
+	if (!window) return;
+	window->hit_test_content = callback;
+	window->hit_test_arg = arg;
+}
+
+void oxy_SetGtkWindowContentHeight(struct gtk_window_t *window, int height)
+{
+	if (!window) return;
+	window->content_height = height > 0 ? height : 0;
+	if (window->scroll_offset > oxy_GtkMaxScroll(window))
+		window->scroll_offset = oxy_GtkMaxScroll(window);
+	gtk_wm.dirty = true;
+}
+
+int oxy_GetGtkWindowScrollOffset(const struct gtk_window_t *window)
+{
+	return window ? window->scroll_offset : 0;
+}
+
+bool oxy_ScrollGtkWindowTo(struct gtk_window_t *window, int offset)
+{
+	int maximum;
+	if (!window) return false;
+	maximum = oxy_GtkMaxScroll(window);
+	if (offset < 0) offset = 0;
+	if (offset > maximum) offset = maximum;
+	if (offset == window->scroll_offset) return false;
+	window->scroll_offset = offset;
+	gtk_wm.dirty = true;
+	return true;
+}
+
+static int oxy_GtkFormRowHeight(const struct oxy_gtk_form_t *form)
+{
+	return form->window->widget.size.width < 210 ? 38 : 29;
+}
+
+static int oxy_GtkFormContentHeight(const struct oxy_gtk_form_t *form)
+{
+	return oxy_GtkFormRowHeight(form) * form->row_count +
+		(form->action_button ? 34 : 0);
+}
+
+void oxy_InitGtkForm(struct oxy_gtk_form_t *form, struct gtk_window_t *window,
+					 struct oxy_gtk_form_row_t *rows, uint8_t row_count,
+					 struct oxy_widget_t *action_button)
+{
+	if (!form) return;
+	form->window = window;
+	form->rows = rows;
+	form->row_count = row_count;
+	form->selected_row = 0;
+	form->selection_color = window ? window->colors.text_fg : 0;
+	form->action_button = action_button;
+	if (window) oxy_SetGtkWindowContentHeight(window,
+		oxy_GtkFormContentHeight(form));
+}
+
+int oxy_GtkFormRowAt(const struct oxy_gtk_form_t *form, int x, int y)
+{
+	int viewport_top;
+	int viewport_height;
+	int content_x;
+	int content_width;
+	int row_height;
+	int scroll_offset;
+	int row;
+	if (!form || !form->window || form->window->minimized) return -1;
+	viewport_top = form->window->widget.position.y + 16;
+	viewport_height = oxy_GtkViewportHeight(form->window);
+	content_x = form->window->widget.position.x + 8;
+	content_width = form->window->widget.size.width - 24;
+	row_height = oxy_GtkFormRowHeight(form);
+	scroll_offset = form->window->scroll_offset;
+	if (x < content_x || x >= content_x + content_width ||
+		y < viewport_top || y >= viewport_top + viewport_height) return -1;
+	row = (y - viewport_top + scroll_offset) / row_height;
+	if (row >= 0 && row < form->row_count) return row;
+	if (form->action_button &&
+		y >= viewport_top + row_height * form->row_count - scroll_offset + 3 &&
+		y < viewport_top + row_height * form->row_count - scroll_offset + 29)
+		return form->row_count;
+	return -1;
+}
+
+bool oxy_GtkFormHitTest(struct gtk_window_t *window, void *arg, int x, int y)
+{
+	struct oxy_gtk_form_t *form = arg;
+	(void)window;
+	return oxy_GtkFormRowAt(form, x, y) >= 0;
+}
+
+void oxy_SetGtkFormSelection(struct oxy_gtk_form_t *form, uint8_t row)
+{
+	if (!form || row > form->row_count) return;
+	form->selected_row = row;
+	if (form->window) gtk_wm.dirty = true;
+}
+
+void oxy_SetGtkFormSelectionColor(struct oxy_gtk_form_t *form, uint8_t color)
+{
+	if (!form) return;
+	form->selection_color = color;
+	if (form->window) gtk_wm.dirty = true;
+}
+
+bool oxy_EnsureGtkFormSelectionVisible(struct oxy_gtk_form_t *form)
+{
+	int row_height;
+	int top;
+	int bottom;
+	int viewport_height;
+	int scroll_offset;
+	if (!form || !form->window) return false;
+	row_height = oxy_GtkFormRowHeight(form);
+	top = form->selected_row * row_height;
+	bottom = top + (form->selected_row == form->row_count ? 28 : row_height);
+	viewport_height = oxy_GtkViewportHeight(form->window);
+	scroll_offset = form->window->scroll_offset;
+	if (top < scroll_offset)
+		return oxy_ScrollGtkWindowTo(form->window, top);
+	if (bottom > scroll_offset + viewport_height)
+		return oxy_ScrollGtkWindowTo(form->window,
+			bottom - viewport_height);
+	return false;
+}
+
+void oxy_RenderGtkForm(struct gtk_window_t *window, void *arg)
+{
+	struct oxy_gtk_form_t *form = arg;
+	int viewport_top;
+	int viewport_height;
+	int content_x;
+	int content_width;
+	int row_height;
+	int scroll_offset;
+	uint8_t row;
+	if (!form || !window) return;
+	form->window = window;
+	oxy_SetGtkWindowContentHeight(window, oxy_GtkFormContentHeight(form));
+	viewport_top = window->widget.position.y + 16;
+	viewport_height = oxy_GtkViewportHeight(window);
+	content_x = window->widget.position.x + 8;
+	content_width = window->widget.size.width - 24;
+	row_height = oxy_GtkFormRowHeight(form);
+	scroll_offset = window->scroll_offset;
+	gfx_SetClipRegion(window->widget.position.x + 2, viewport_top,
+		window->widget.position.x + window->widget.size.width - 2,
+		viewport_top + viewport_height);
+	gfx_SetTextConfig(gfx_text_clip);
+	for (row = 0; row < form->row_count; row++) {
+		struct oxy_gtk_form_row_t *form_row = &form->rows[row];
+		int top = viewport_top + row * row_height - scroll_offset;
+		if (row == form->selected_row) {
+			gfx_SetColor(form->selection_color);
+			oxy_RoundRectangle(content_x, top, content_width, row_height - 2, 0);
+		}
+		if (form_row->control) {
+			form_row->control->state.selected = row == form->selected_row;
+			if (form_row->control->type == OXY_CHECKBOX_TYPE) {
+				oxy_SetWidgetPosition(form_row->control, content_x + 3, top + 7);
+				oxy_SetWidgetSize(form_row->control, 12, 12);
+			} else if (form_row->control->type == OXY_SLIDER_TYPE) {
+				oxy_SetWidgetPosition(form_row->control, content_x + 3, top + 16);
+				oxy_SetWidgetSize(form_row->control, content_width - 6, 11);
+			}
+			form_row->control->render(form_row->control);
+		}
+		if (form_row->label) {
+			int label_x = content_x +
+				(form_row->control && form_row->control->type == OXY_CHECKBOX_TYPE
+				 ? 22 : 3);
+			oxy_SetWidgetPosition(&form_row->label->widget, label_x, top + 5);
+			oxy_SetWidgetSize(&form_row->label->widget,
+				content_x + content_width - label_x - 3,
+				row_height - 7);
+			form_row->label->wrap = true;
+			form_row->label->max_lines = row_height / 9;
+			form_row->label->widget.state.selected =
+				row == form->selected_row;
+			form_row->label->widget.state.clicked = false;
+			form_row->label->widget.render(&form_row->label->widget);
+		}
+	}
+	if (form->action_button) {
+		int top = viewport_top + row_height * form->row_count -
+			scroll_offset + 3;
+		form->action_button->state.selected =
+			form->selected_row == form->row_count;
+		oxy_SetWidgetPosition(form->action_button, content_x, top);
+		oxy_SetWidgetSize(form->action_button, content_width, 26);
+		if (form->action_button->type == OXY_BUTTON_TYPE) {
+			struct oxy_button_t *button = (struct oxy_button_t *)form->action_button;
+			if (button->label) {
+				oxy_SetWidgetPosition(&button->label->widget,
+					content_x + (content_width -
+					gfx_GetStringWidth(button->label->text)) / 2, top + 9);
+			}
+		}
+		form->action_button->render(form->action_button);
+	}
+	gfx_SetClipRegion(0, 0, LCD_WIDTH, LCD_HEIGHT);
+	gfx_SetTextConfig(gfx_text_noclip);
 }
 
 void oxy_SetGtkWindowManagerBackground(oxy_gtk_background_callback_t callback,
@@ -204,9 +438,10 @@ bool oxy_UpdateGtkWindowManager(int pointer_x, int pointer_y, bool pointer_down)
 {
 	bool pressed = pointer_down && !gtk_wm.pointer_down;
 	bool handled = gtk_wm.captured != NULL;
+	struct gtk_window_t *hovered = oxy_GetGtkWindowAt(pointer_x, pointer_y);
 
 	if (pressed) {
-		struct gtk_window_t *window = oxy_GetGtkWindowAt(pointer_x, pointer_y);
+		struct gtk_window_t *window = hovered;
 		gtk_wm.captured = NULL;
 		gtk_wm.drag_mode = OXY_GTK_DRAG_NONE;
 		if (window) {
@@ -215,6 +450,10 @@ bool oxy_UpdateGtkWindowManager(int pointer_x, int pointer_y, bool pointer_down)
 			control = oxy_GetGtkWindowControlAt(window, pointer_x, pointer_y);
 			if (control != OXY_WINDOW_CONTROL_NONE) {
 				oxy_ActivateGtkWindowControl(window, control);
+				handled = true;
+			} else if (oxy_GtkScrollbarContains(window, pointer_x, pointer_y)) {
+				gtk_wm.captured = window;
+				gtk_wm.drag_mode = OXY_GTK_DRAG_SCROLL;
 				handled = true;
 			} else if (!window->minimized && !window->maximized && window->resizable &&
 					   pointer_x >= window->widget.position.x + window->widget.size.width - 12 &&
@@ -244,12 +483,43 @@ bool oxy_UpdateGtkWindowManager(int pointer_x, int pointer_y, bool pointer_down)
 			oxy_ResizeGtkWindow(gtk_wm.captured,
 				pointer_x - gtk_wm.captured->widget.position.x,
 				pointer_y - gtk_wm.captured->widget.position.y - 12);
+		} else if (gtk_wm.drag_mode == OXY_GTK_DRAG_SCROLL) {
+			int viewport_height = oxy_GtkViewportHeight(gtk_wm.captured);
+			int thumb_height = viewport_height * viewport_height /
+				gtk_wm.captured->content_height;
+			int travel;
+			int position;
+			if (thumb_height < 10) thumb_height = 10;
+			travel = viewport_height - thumb_height;
+			position = pointer_y - gtk_wm.captured->widget.position.y - 16 -
+				thumb_height / 2;
+			if (position < 0) position = 0;
+			if (position > travel) position = travel;
+			oxy_ScrollGtkWindowTo(gtk_wm.captured, travel > 0
+				? oxy_GtkMaxScroll(gtk_wm.captured) * position / travel : 0);
 		}
 	}
 
 	if (!pointer_down) {
 		gtk_wm.captured = NULL;
 		gtk_wm.drag_mode = OXY_GTK_DRAG_NONE;
+	}
+
+	if (gtk_wm.drag_mode == OXY_GTK_DRAG_MOVE) {
+		oxy_SetMouseCursor(OXY_MOUSE_CURSOR_GRAB);
+	} else if (gtk_wm.drag_mode == OXY_GTK_DRAG_RESIZE) {
+		oxy_SetMouseCursor(OXY_MOUSE_CURSOR_GRAB);
+	} else if (gtk_wm.drag_mode == OXY_GTK_DRAG_SCROLL) {
+		oxy_SetMouseCursor(OXY_MOUSE_CURSOR_RESIZE_VERTICAL);
+	} else if (hovered &&
+		(oxy_GetGtkWindowControlAt(hovered, pointer_x, pointer_y) !=
+			OXY_WINDOW_CONTROL_NONE ||
+		 oxy_GtkScrollbarContains(hovered, pointer_x, pointer_y) ||
+		 (hovered->hit_test_content && hovered->hit_test_content(
+			hovered, hovered->hit_test_arg, pointer_x, pointer_y)))) {
+		oxy_SetMouseCursor(OXY_MOUSE_CURSOR_POINTER);
+	} else {
+		oxy_SetMouseCursor(OXY_MOUSE_CURSOR_DEFAULT);
 	}
 	gtk_wm.pointer_down = pointer_down;
 	return handled;
@@ -284,6 +554,22 @@ bool oxy_RenderGtkWindows(void)
 		oxy_RenderGtkWindow(window);
 		if (!window->minimized && window->render_content)
 			window->render_content(window, window->render_arg);
+		if (!window->minimized && oxy_GtkMaxScroll(window) > 0) {
+			int viewport_height = oxy_GtkViewportHeight(window);
+			int thumb_height = viewport_height * viewport_height /
+				window->content_height;
+			int thumb_y;
+			int track_x = window->widget.position.x + window->widget.size.width - 9;
+			if (thumb_height < 10) thumb_height = 10;
+			thumb_y = window->widget.position.y + 16 + window->scroll_offset *
+				(viewport_height - thumb_height) / oxy_GtkMaxScroll(window);
+			gfx_SetColor(window->colors.color_a);
+			oxy_RoundRectangle(track_x, window->widget.position.y + 16, 6,
+				viewport_height, 0);
+			gfx_SetColor(window->colors.text_fg);
+			oxy_FillRoundRectangle(track_x + 1, thumb_y + 1, 4,
+				thumb_height - 2, 0);
+		}
 	}
 	gtk_wm.dirty = false;
 	return true;
@@ -540,115 +826,44 @@ void oxy_Message(char *title, char *message)
 	while (!os_GetCSC());	
 }
 
-/**
- * Implemented from "Captain-Calc/textioc"
- * This function works on the assumption that the longest word is <256 characters long
- */
-uint8_t _getWordWidth(char *word) 
+void oxy_PrintWordWrap(const char *text, uint24_t x, uint8_t y, int width,
+					   uint8_t max_lines, uint8_t init_line)
 {
-	char *c = word;
-	uint8_t width = 0;
+	uint8_t logical_line = 0;
+	uint8_t printed_lines = 0;
+	char line[64];
 
-	while (!isspace(*c) && !_iscntrl(*c) && width < 240) 
-		width += gfx_GetCharWidth(*c++);
-	
-	return width;
-}
+	if (!text || width <= 0 || max_lines == 0) return;
+	if (width > LCD_WIDTH - (int)x) width = LCD_WIDTH - x;
+	while (*text && printed_lines < max_lines) {
+		size_t length = 0;
+		size_t break_at = 0;
+		int line_width = 0;
+		bool width_exceeded = false;
 
-bool _iscntrl(int c) 
-{
-	if (c == '\0' || c == '\n' || c == '\t') {
-		return 1;
-	}else return 0;
-}
-
-void oxy_PrintWordWrap(char *text, uint24_t x, uint8_t y, int width, uint8_t max_lines, uint8_t init_line)
-{
-	char *curr_char = text;
-	uint24_t curr_line_width = 0;
-	int word_width = 0;
-	uint8_t curr_line_num = init_line;
-	uint8_t i;
-	
-	// Debugging
-	gfx_SetColor(224);
-	gfx_FillRectangle(x + width, 0, 2, LCD_HEIGHT);
-	
-	if (gfx_GetStringWidth(text) <= (unsigned int)width) {
-		gfx_SetTextXY(x, y);
-		gfx_PrintString(text);
-		return;
-	};
-	
-	// If the width is way bigger than the LCD_Width
-	if (width > LCD_WIDTH) width = LCD_WIDTH;
-	
-	dbg_sprintf(dbgout, "Current Line: 1 -------------\n");
-	
-	for ( ; ; ) {
-
-		if (curr_line_num > max_lines || y > LCD_HEIGHT)
-			return;
-
-		gfx_SetTextXY(x, y + (curr_line_num - init_line) * 4);
-		curr_line_width = 0;
-
-		while (*curr_char != '\0') {
-
-			// Get the width of the next word
-			word_width = _getWordWidth(curr_char);
-			dbg_sprintf(dbgout, "word_width = %d | Word: ", word_width);
-
-			// If there is room on the current line for the word, print the word
-			// else, start a new line
-			if (curr_line_width + word_width < (unsigned int)width) {
-				curr_line_width += word_width;
-				while (!isspace(*curr_char) && !iscntrl(*curr_char)) {
-					dbg_sprintf(dbgout, "%c", *curr_char);
-					gfx_PrintChar(*curr_char++);
-				};
-				dbg_sprintf(dbgout, "\n");
-			} else {
-				dbg_sprintf(dbgout, "Cannot put word on current line. Breaking...\n");
-				goto startLine;
-			};
-
-			if (*curr_char == '\0') return;
-
-			switch (*curr_char++) {
-				case '\t':
-					dbg_sprintf(dbgout, "Handling horizontal tab...\n");
-					if (curr_line_width + (4 * gfx_GetCharWidth(' ')) < (unsigned int)width) {
-						for (i = 1; i < 4; i++) {
-							gfx_PrintChar(' ');
-							curr_line_width += gfx_GetCharWidth(' ');
-						};
-					} else {
-						dbg_sprintf(dbgout, "Cannot put tab on current line. Breaking...\n");
-						goto startLine;
-					};
-					break;
-				
-				case '\n':
-					dbg_sprintf(dbgout, "Handling newline...\n");
-					goto startLine;
-				
-				case '\v':
-					dbg_sprintf(dbgout, "Handling vertical tab...\n");
-					goto startLine;
-				
-				case ' ':
-					dbg_sprintf(dbgout, "Handling space...\n");
-					gfx_PrintChar(*(curr_char - 1));
-					curr_line_width += gfx_GetCharWidth(' ');
-					break;
-			};
-
-		};
-
-		startLine:
-		
-		curr_line_num++;
-		dbg_sprintf(dbgout, "Line: %d -------------\n", curr_line_num);
-	};
+		while (text[length] && text[length] != '\n' &&
+			   length < sizeof(line) - 1) {
+			int character_width = gfx_GetCharWidth(text[length]);
+			if (line_width + character_width > width && length > 0) {
+				width_exceeded = true;
+				break;
+			}
+			line_width += character_width;
+			if (text[length] == ' ') break_at = length;
+			length++;
+		}
+		if (width_exceeded && break_at > 0) length = break_at;
+		if (length == 0 && *text != '\n') length = 1;
+		memcpy(line, text, length);
+		while (length > 0 && line[length - 1] == ' ') length--;
+		line[length] = '\0';
+		if (logical_line >= init_line) {
+			gfx_PrintStringXY(line, x, y + printed_lines * 9);
+			printed_lines++;
+		}
+		logical_line++;
+		text += length;
+		while (*text == ' ') text++;
+		if (*text == '\n') text++;
+	}
 }

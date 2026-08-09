@@ -1,6 +1,6 @@
 /**
  * @file oxy_cursor.h
- * @brief This file contains functions for cursor
+ * @brief Declares the legacy Oxygen cursor state and rendering helpers.
  *
  * @author Alvajoy "Alvajoy123" Asante
  * @version 1.0
@@ -120,55 +120,59 @@ extern "C"
 	extern struct oxy_cursor_info_t oxy_cursor_temp;
 
 	/**
-	 * @brief Sets cursor temps callbacks to those of 'widget'
-	 * @note This functions is mainly used in widget update functions.
-	 * @param  widget:
+	 * @brief Copies a widget's cursor callbacks into the temporary cursor state.
+	 * @note This function is mainly used in widget update functions.
+	 * @param widget Widget supplying the temporary callback data.
 	 */
 	void oxy_SetCursorTempCallBack(struct oxy_widget_t *widget);
 
 	/**
-	 * @brief This functions resets the cursor temp call backs
-	 * @note This function is mainly used in widget update functions
+	 * @brief Clears the temporary cursor callback state.
+	 * @note This function is mainly used in widget update functions.
 	 */
 	void oxy_ResetCursorTempCallBack(void);
 
 	/**
-	 * @brief Init all variable needed for Cursor file.
+	 * @brief Initializes the cursor subsystem.
 	 */
 	void oxy_InitCursor(void);
 
 	/**
-	 * @brief Centers the cursor in middle of the screen.
+	 * @brief Centers the cursor on screen.
 	 */
 	void oxy_CenterCursor(void);
 
 	/**
-	 * @brief This function is used to reset the Cursor scroll and clicked index.
+	 * @brief Resets cursor scrolling and click tracking state.
 	 */
 	void oxy_ResetCursor(void);
 
 	/**
-	 * Sets the movement speed of the cursor
+	 * @brief Sets the cursor movement speed.
+	 * @param speed New cursor speed.
+	 * @return `true` if the speed was accepted.
 	 */
 	bool oxy_SetCursorSpeed(uint8_t speed);
 
 	/**
-	 * @brief This function is used to render the cursor on the back buffer of the screen.
+	 * @brief Renders the cursor into its backing buffer.
+	 * @return `true` if the backing buffer was updated.
 	 */
 	bool oxy_RenderCursorBackBuff(void);
 
 	/**
-	 * @brief This function is used to get the cursor on the back buffer of the screen.
+	 * @brief Captures the screen pixels under the cursor into its backing buffer.
+	 * @return `true` if the backing buffer was captured.
 	 */
 	bool oxy_GetCursorBackBuff(void);
 
 	/**
-	 * @brief Updates Cursor
+	 * @brief Updates cursor state.
 	 */
 	void oxy_UpdateCursor(void);
 
 	/**
-	 * @brief Renders Cursor
+	 * @brief Renders the cursor to the screen.
 	 */
 	void oxy_RenderCursor(void);
 

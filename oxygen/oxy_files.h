@@ -1,3 +1,7 @@
+/**
+ * @file oxy_files.h
+ * @brief Declares Oxygen's virtual file system data structures and helpers.
+ */
 #ifndef OXY_FILES_H
 #define OXY_FILES_H
 
@@ -17,8 +21,8 @@
 extern "C" {
 #endif /* __cplusplus */
 
-/** 
- * @brief file dynamic pointer.
+/**
+ * @brief Describes a program or AppVar tracked by the Oxygen file index.
  */
 struct oxy_files_t {
     uint8_t user_id;
@@ -40,8 +44,8 @@ struct oxy_files_t {
 };
 extern struct oxy_files_t *oxy_file;
 
-/** 
- * @brief Folder dynamic pointer.
+/**
+ * @brief Describes a virtual folder tracked by the Oxygen file index.
  */
 struct oxy_folders_t {
 	uint8_t user_id;
@@ -56,8 +60,8 @@ struct oxy_folders_t {
 };
 extern struct oxy_folders_t *oxy_folder;
 
-/** 
- * @brief File system information.
+/**
+ * @brief Stores aggregate counts for the indexed file system.
  */
 struct oxy_file_system_t {
     int numfiles;
@@ -68,12 +72,18 @@ extern struct oxy_file_system_t oxy_file_system;
 
 
 /**
- * @brief Init the file system for use.  
+ * @brief Initializes the Oxygen file system state.
  */
 void oxy_InitFilesStystem(void);
 
+/**
+ * @brief Verifies that the indexed file-system state is still valid.
+ */
 void oxy_CheckFileSystem(void);
 
+/**
+ * @brief Rebuilds the indexed file-system state from calculator storage.
+ */
 void oxy_RescanFileSystem(void);
 
 /** 
@@ -82,70 +92,78 @@ void oxy_RescanFileSystem(void);
 void oxy_DetectAllFiles(void);
 
 /* Deleting folders and files */
-/** Removes folder from index in pointer.
- *  @param index   
+/**
+ * @brief Removes a folder entry from the folder index.
+ * @param index Folder index to remove.
  */
 void oxy_DeleteFolder(int index);
 
-/** Removes file from index in pointer.
- *  @param index   
+/**
+ * @brief Removes a file entry from the file index.
+ * @param index File index to remove.
  */
 void oxy_DeleteFile(int index);
 
 /* Creating folders and files */ 
 /**
- * @brief Creates space to add a file.  
+ * @brief Allocates space for a new file entry.
+ * @return `true` if a new entry was reserved successfully.
  */
 bool oxy_AddFile(void);
 
-/** Adds folder to position.
- * @param name Name of the 
- * @param location Int of wanted folder location.
+/**
+ * @brief Adds a folder entry at the requested position.
+ * @param name Folder name to store.
+ * @param position Position for the new folder entry.
+ * @return `true` if the folder was added successfully.
  */
 bool oxy_AddFolder(char *name, int position);
 
 /* Detecting files icons */
 /**
- * @brief Gets Asm Icon and stores into file pointer.  
- */ 
+ * @brief Assigns assembly program icons to indexed file entries.
+ */
 void oxy_GetAsmIcons(void);
 
 /**
- * @brief Gets Basic Icon and stores into file pointer.  
- */ 
+ * @brief Assigns BASIC program icons to indexed file entries.
+ */
 void oxy_GetBasicIcons(void);
 
 /* Sorting all files */
 /**
- * @brief Sorts all folders.
- */ 
+ * @brief Sorts all indexed folders.
+ */
 void oxy_SortFolders(void);
 
 /**
- * @brief Sorts Files.  
- */ 
+ * @brief Sorts all indexed files.
+ */
 void oxy_SortFiles(void);
 
 /**
- * Gets the amount file type from oxygen's files type. 
- * @param type oxygen file type uint8_t.
- * @returns Returns TI file type.
- */ 
+ * @brief Maps an Oxygen file type to the corresponding TI-OS file type.
+ * @param type Oxygen file type constant.
+ * @return TI-OS file type identifier.
+ */
 uint8_t oxy_GetFileType(uint8_t type);
 
 /* Other */
 /**
  * @brief Delete a file or folder.
- * @param isfolder Is the item a folder?
- * @param index Item index?
- * @returns Returns true when a file is delete, and 0 otherwise.
- */ 
+ * @param isfolder Whether the indexed item is a folder.
+ * @param index File or folder index.
+ * @return `true` if the item was removed successfully.
+ */
 bool oxy_Delete(bool isfolder, int index);
 
 /**
- * @brief Edit a program.  
- * @returns Returns false if theres an error.
- */ 
+ * @brief Launches an editor for the specified program.
+ * @param prog_name Program name to edit.
+ * @param editor_name Name of the editor program to run.
+ * @param callback Callback invoked by the OS while the editor is running.
+ * @return `true` if the editor launched successfully.
+ */
 bool oxy_EditPrgm(char *prog_name, const char *editor_name, os_runprgm_callback_t callback);
 
 

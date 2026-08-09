@@ -42,18 +42,18 @@ void oxy_RenderCheckbox(struct oxy_widget_t *widget)
 		{
 			if (widget->state.clicked)
 			{
-				oxy_OutlinedRectangle(widget->position.x, widget->position.y, widget->size.width, widget->size.height,
+				oxy_OutlinedRoundRectangle(widget->position.x, widget->position.y, widget->size.width, widget->size.height,
 									  widget->color.clicked, widget->color.color_b);
 			}
 			else
 			{
-				oxy_OutlinedRectangle(widget->position.x, widget->position.y, widget->size.width, widget->size.height,
+				oxy_OutlinedRoundRectangle(widget->position.x, widget->position.y, widget->size.width, widget->size.height,
 									  widget->color.selected, widget->color.color_b);
 			}
 		}
 		else
 		{
-			oxy_OutlinedRectangle(widget->position.x, widget->position.y, widget->size.width, widget->size.height,
+			oxy_OutlinedRoundRectangle(widget->position.x, widget->position.y, widget->size.width, widget->size.height,
 								  widget->color.unselected, widget->color.color_b);
 		}
 
@@ -61,7 +61,8 @@ void oxy_RenderCheckbox(struct oxy_widget_t *widget)
 		{
 			// Change to a sprite later on
 			gfx_SetColor(widget->color.color_a);
-			gfx_FillRectangle(widget->position.x + 2, widget->position.y + 2, widget->size.width - 4, widget->size.height - 4);
+			oxy_FillRoundRectangle(widget->position.x + 2, widget->position.y + 2,
+								 widget->size.width - 4, widget->size.height - 4, 0);
 		}
 	}
 }

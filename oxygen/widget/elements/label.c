@@ -37,9 +37,27 @@ void oxy_UpdateLabel(struct oxy_widget_t *widget)
 void oxy_RenderLabel(struct oxy_widget_t *widget)
 {
 	struct oxy_label_t *label = (struct oxy_label_t *)widget;
+	uint8_t text_fg;
+	uint8_t text_bg;
 
 	if (widget->state.visible && label->text)
 	{
+		if (widget->state.clicked)
+		{
+			text_fg = widget->color.text_fg_clicked;
+			text_bg = widget->color.text_bg_clicked;
+		}
+		else if (widget->state.selected)
+		{
+			text_fg = widget->color.text_fg_selected;
+			text_bg = widget->color.text_bg_selected;
+		}
+		else
+		{
+			text_fg = widget->color.text_fg_unselected;
+			text_bg = widget->color.text_bg_unselected;
+		}
+		oxy_SetTextColor(text_fg, text_bg);
 		if (label->wrap)
 		{
 			oxy_PrintWordWrap(label->text,

@@ -1,7 +1,7 @@
 /**
  * @file oxy_widget.h
- * @brief This file is a linker for widget elements and core widget files
- * 
+ * @brief Aggregates the retained-widget subsystem headers.
+ *
  * @author Alvajoy "Alvajoy123" Asante
  * @version 1.0
  * @copyright Copyright (c) 2018 - 2024
@@ -29,7 +29,9 @@
 #ifndef OXY_WIDGET_H
 #define OXY_WIDGET_H
 
-// Include everything needed for oxygen widgets
+/**
+ * @brief Includes the core widget types, helpers, and built-in widgets.
+ */
 
 #include "widget/globals.h" // Global variables and definitions
 #include "widget/util.h"    // Utilities

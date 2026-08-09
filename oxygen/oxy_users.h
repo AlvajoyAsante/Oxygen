@@ -1,3 +1,7 @@
+/**
+ * @file oxy_users.h
+ * @brief Declares Oxygen's virtual user records and management helpers.
+ */
 #ifndef OXY_USERS_H
 #define OXY_USERS_H
 
@@ -9,8 +13,8 @@ extern "C" {
 #endif /* __cplusplus */
 
 /**
- * @brief Users Dynamic Pointer (Stores simple user information).  
- */ 
+ * @brief Stores one virtual user's profile and authentication data.
+ */
 struct oxy_user_t {
 	// Position of user info in pointer.
 	uint8_t user_id;
@@ -31,8 +35,8 @@ struct oxy_user_t {
 extern struct oxy_user_t *oxy_user;
 
 /**
- * @brief User System Structure (stores amount of users)
- */ 
+ * @brief Stores aggregate metadata for the user registry.
+ */
 struct oxy_user_system_t {
 	int user_amount;
 };
@@ -40,44 +44,46 @@ extern struct oxy_user_system_t oxy_user_system;
 
 
 /**
- * This function is used to create new users in user stack.
- * @param name Users name.
- * @param password password for locking features.
+ * @brief Creates a new user record.
+ * @param name User name.
+ * @param password Password used for protected features.
  * @param type Type of user (0 = admin, 1 = user, 2 = guest).
- * @returns Users index.
- */ 
+ * @return New user index.
+ */
 uint8_t oxy_NewUser(char *name, char *password, const uint8_t type);
 
 /**
- * Sets Password of a user.
+ * @brief Sets a user's password.
  * @param password New password.
- * @param index Set this to the users index.
- */ 
+ * @param index User index.
+ */
 void oxy_SetUserPassword(char *password, const int index);
 
 /**
- * Changes name of a user.
+ * @brief Changes a user's display name.
  * @param name New name.
- * @param index Set this to the users index.
- */ 
+ * @param index User index.
+ */
 void oxy_SetUserName(char *name, const int index);
 
 /**
- * Changes name of a user.
- * @param name New name.
- * @param index Set this to the users index.
- */ 
+ * @brief Sets the icon sprite used for a user.
+ * @param icon New icon sprite.
+ * @param index User index.
+ */
 void oxy_UserSetIcon(gfx_sprite_t *icon, const int index);
 
 /**
- * Deletes current user at set index.
- * @param index Set this to the users index.
- */ 
+ * @brief Deletes a user record.
+ * @param index User index.
+ */
 void oxy_DeleteUser(const int index);
 
 /**
- * This function is used to check if input is equal to the password in user index.
- * if the function returns true then input equals to index password and if false etc.
+ * @brief Checks whether an input string matches a user's password.
+ * @param input Password candidate.
+ * @param index User index.
+ * @return `true` if the password matches.
  */
 bool oxy_UserCheckPassword(const char *input, const int index);
 

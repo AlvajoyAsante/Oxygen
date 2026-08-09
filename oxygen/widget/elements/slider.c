@@ -72,12 +72,14 @@ void oxy_RenderSlider(struct oxy_widget_t *widget)
     int offset = slider->curr_value - slider->min;
     uint16_t track_width = slider->render_value && widget->size.width > 28 ? widget->size.width - 28 : widget->size.width;
 
-    oxy_OutlinedRectangle(widget->position.x, widget->position.y, track_width, widget->size.height,
-                          widget->color.unselected, widget->color.color_a);
+    oxy_OutlinedRoundRectangle(widget->position.x, widget->position.y, track_width,
+                               widget->size.height, widget->color.unselected,
+                               widget->color.color_a);
     gfx_SetColor(widget->state.selected ? widget->color.selected : widget->color.color_b);
     if (range > 0 && track_width > 4)
-        gfx_FillRectangle(widget->position.x + 2, widget->position.y + 2,
-                          (track_width - 4) * offset / range, widget->size.height - 4);
+        oxy_FillRoundRectangle(widget->position.x + 2, widget->position.y + 2,
+                       (track_width - 4) * offset / range,
+                       widget->size.height - 4, 0);
 
     if (slider->render_value && track_width < widget->size.width)
     {

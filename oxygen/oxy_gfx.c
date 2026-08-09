@@ -108,6 +108,16 @@ void oxy_OutlinedRectangle(uint16_t x, uint8_t y, uint16_t width, uint8_t height
 	gfx_Rectangle(x, y, width, height);
 }
 
+void oxy_OutlinedRoundRectangle(uint16_t x, uint8_t y, uint16_t width,
+								uint8_t height, uint8_t fill_color,
+								uint8_t border_color)
+{
+	gfx_SetColor(fill_color);
+	oxy_FillRoundRectangle(x, y, width, height, 0);
+	gfx_SetColor(border_color);
+	oxy_RoundRectangle(x, y, width, height, 0);
+}
+
 void oxy_SetTextColor(uint8_t foreground, uint8_t background)
 {
 	gfx_SetTextFGColor(foreground);
