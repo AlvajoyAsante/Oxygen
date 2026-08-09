@@ -99,6 +99,21 @@ void oxy_RoundRectangle(uint16_t x, uint8_t y, int w, uint8_t h, uint8_t type)
 	}
 }
 
+void oxy_OutlinedRectangle(uint16_t x, uint8_t y, uint16_t width, uint8_t height,
+						   uint8_t fill_color, uint8_t border_color)
+{
+	gfx_SetColor(fill_color);
+	gfx_FillRectangle(x, y, width, height);
+	gfx_SetColor(border_color);
+	gfx_Rectangle(x, y, width, height);
+}
+
+void oxy_SetTextColor(uint8_t foreground, uint8_t background)
+{
+	gfx_SetTextFGColor(foreground);
+	gfx_SetTextBGColor(background);
+}
+
 // Sprite Routines.
 /**
  * This function is use to replace the color in a sprite.

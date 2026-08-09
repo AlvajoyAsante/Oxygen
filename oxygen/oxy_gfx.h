@@ -40,6 +40,11 @@ oxy_FillRoundRectangle(x, y, w, h, 4)
  */
 void oxy_RoundRectangle(uint16_t x, uint8_t y, int w, uint8_t h, uint8_t type);
 
+void oxy_OutlinedRectangle(uint16_t x, uint8_t y, uint16_t width, uint8_t height,
+						   uint8_t fill_color, uint8_t border_color);
+
+void oxy_SetTextColor(uint8_t foreground, uint8_t background);
+
 #define oxy_RoundRectangle_Upper(x, y, w, h) \
 oxy_RoundRectangle(x, y, w, h, 1)
 
