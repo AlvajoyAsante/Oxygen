@@ -1,9 +1,10 @@
 #include "color.h"
 
-void oxy_SetWidgetColor(struct oxy_widget_t *widget, uint8_t color_a, uint8_t color_b)
+void oxy_SetWidgetExtraColors(struct oxy_widget_t *widget, uint8_t color_a, uint8_t color_b, uint8_t color_c)
 {
 	widget->color.color_a = color_a;
 	widget->color.color_b = color_b;
+	widget->color.color_c = color_c;
 }
 
 void oxy_SetWidgetUnselectedColor(struct oxy_widget_t *widget, uint8_t color, uint8_t text_fg, uint8_t text_bg)
