@@ -12,48 +12,23 @@
 void oxy_UpdateSwitch(struct oxy_widget_t *widget)
 {
 	struct oxy_switch_t *switch_ = (struct oxy_switch_t *)widget;
+	const struct oxy_input_event_t *event = oxy_GetInputEvent();
 
 	if (!widget->state.visible)
 		return;
 
-	if (CURSOR_STATE_ID == CURSOR_STATE_IDLE && oxy_CheckCursorOverlap(widget))
+	widget->state.selected = event->hovered == widget || oxy_IsWidgetFocused(widget);
+	if (event->primary_pressed && event->hovered == widget)
 	{
-		if (widget->state.clickable)
-		{
-			widget->state.selected = true;
-			CURSOR_STATE_ID = CURSOR_STATE_CLICK;
-		}
-		else
-		{
-			widget->state.selected = false;
-		}
+		oxy_FocusWidget(widget);
+		oxy_CaptureWidget(widget);
 	}
-	else
+	if (event->primary_released && event->captured == widget && event->hovered == widget)
 	{
-		widget->state.selected = false;
+		switch_->value = !switch_->value;
+		widget->state.redraw = true;
 	}
-
-	if (kb_Data[6] & kb_Enter || kb_Data[1] & kb_2nd)
-	{
-		if (!widget->state.clicked && widget->state.selected)
-		{
-			widget->state.clicked = true;
-
-			if (!switch_->value)
-			{
-				switch_->value = true;
-			}
-			else
-				switch_->value = false;
-
-			/* if (widget->cursor_info != NULL)
-				switch_->click(switch_->arg); */
-		}
-	}
-	else
-	{
-		widget->state.clicked = false;
-	}
+	widget->state.clicked = event->primary_down && event->captured == widget;
 }
 
 void oxy_RenderSwitch(struct oxy_widget_t *widget)
