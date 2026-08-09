@@ -9,6 +9,9 @@ extern "C" {
 #define cursor_palette_offset 0
 #include "cursorA.h"
 #include "cursorB.h"
+#include "cursorC.h"
+#include "cursorD.h"
+#include "cursorE.h"
 #define battery_palette_offset 0
 #include "charge.h"
 #define xlibc_condensed_palette_offset 0
