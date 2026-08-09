@@ -12,6 +12,7 @@
 void oxy_UpdateButton(struct oxy_widget_t *widget)
 {
     struct oxy_button_t *button = (struct oxy_button_t *)widget;
+    const struct oxy_input_event_t *event = oxy_GetInputEvent();
 
      widget->state.selected = false;
 
@@ -45,44 +46,32 @@ void oxy_UpdateButton(struct oxy_widget_t *widget)
         }
     }
    
-    // If the cursor is not overlapping with the widget check if it's clickable and prepare for a click
-    if (CURSOR_STATE_ID != CURSOR_STATE_IDLE && !oxy_CheckCursorOverlap(widget))
+    widget->state.selected = event->hovered == widget || oxy_IsWidgetFocused(widget);
+    if (event->primary_pressed && event->hovered == widget)
+    {
+        oxy_FocusWidget(widget);
+        oxy_CaptureWidget(widget);
+    }
+    if (!widget->state.selected && event->captured != widget)
         return;
 
-    widget->state.selected = true;
     CURSOR_STATE_ID = CURSOR_STATE_CLICK;
 
     // If there is anything Hover Section run hover function
     if (widget->cursor_info.hover != NULL)
         widget->cursor_info.hover(widget->cursor_info.hover_arg);
 
-    // Right Click
-    if (kb_Data[6] & kb_Enter || kb_Data[1] & kb_2nd)
+    if (event->primary_released && event->captured == widget && event->hovered == widget)
     {
-        if (!widget->state.clicked && widget->state.selected)
-        {
+        if (widget->cursor_info.right_click)
             widget->cursor_info.right_click(widget->cursor_info.right_arg);
-            widget->state.clicked = true;
-        }
     }
-    else
+    if (event->secondary_pressed && event->hovered == widget)
     {
-        widget->state.clicked = false;
-    }
-
-    // Left Click
-    if (kb_Data[2] & kb_Alpha)
-    {
-        if (!widget->state.clicked && widget->state.selected)
-        {
+        if (widget->cursor_info.left_click)
             widget->cursor_info.left_click(widget->cursor_info.left_arg);
-            widget->state.clicked = true;
-        }
     }
-    else
-    {
-        widget->state.clicked = false;
-    }
+    widget->state.clicked = event->primary_down && event->captured == widget;
 }
 
 void oxy_RenderButton(struct oxy_widget_t *widget)
