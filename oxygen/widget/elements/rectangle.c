@@ -55,7 +55,7 @@ void oxy_UpdateRectangle(struct oxy_widget_t *widget)
         {
             if (widget->cursor_info.right_click != NULL)
             {
-                widget->cursor_info.left_click(widget->cursor_info.left_arg);
+				widget->cursor_info.right_click(widget->cursor_info.right_arg);
             }
 
             widget->state.clicked = true;
@@ -80,8 +80,7 @@ void oxy_RenderRectangle(struct oxy_widget_t *widget)
 
             if (rectangle->round)
             {
-                // use oxygen rectangle
-                oxy_FillIndentedRectangle_All(widget->position.x, widget->position.y, widget->size.width, widget->size.height);
+                oxy_FillRoundRectangle(widget->position.x, widget->position.y, widget->size.width, widget->size.height, 0);
             }
             else
             {
@@ -96,7 +95,7 @@ void oxy_RenderRectangle(struct oxy_widget_t *widget)
 
             if (rectangle->round)
             {
-                oxy_FillIndentedRectangle_All(widget->position.x, widget->position.y, widget->size.width, widget->size.height);
+                oxy_RoundRectangle(widget->position.x, widget->position.y, widget->size.width, widget->size.height, 0);
             }
             else
             {
