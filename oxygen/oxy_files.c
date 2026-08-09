@@ -3,6 +3,7 @@
 
 #include <tice.h>
 #include <fileioc.h>
+#include <ti/tokens.h>
 #include <string.h>
 #include <debug.h>
 
@@ -362,8 +363,9 @@ void oxy_GetBasicIcons(void)
     uint8_t palette[] = {223, 24, 224, 0, 248, 6, 228, 96, 16, 29, 231, 255, 222, 189, 148, 74};
     uint8_t data_pos = '\0';
 	char temp[2] = " ";
-    uint8_t search[] = {tColon, tD, tC, tS, tEnter, tString};
-    uint8_t search_ice[] = {tColon, tii};
+	uint8_t search[] = {OS_TOK_COLON, OS_TOK_D, OS_TOK_C, OS_TOK_S,
+		OS_TOK_NEWLINE, OS_TOK_DOUBLE_QUOTE};
+	uint8_t search_ice[] = {OS_TOK_COLON, OS_TOK_SMALL_I};
 	
     for (int i = 0; i < oxy_file_system.numfiles; i++){
 		
@@ -386,7 +388,7 @@ void oxy_GetBasicIcons(void)
                         ti_Read(temp, 1, 1, slot);
                         ti_Read((void*)(data_pos + r), 1, 1, slot);
                         
-						if (data_pos != tString) {
+						if (data_pos != OS_TOK_DOUBLE_QUOTE) {
 							curr_file->icon->data[r] = palette[strtol(temp, NULL, 16)];
                         }else{
                             free(curr_file->icon);
