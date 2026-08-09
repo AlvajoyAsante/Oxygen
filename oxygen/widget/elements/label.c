@@ -5,6 +5,7 @@
 #include "../color.h"
 #include "../../oxy_cursor.h"
 #include "../../oxy_gfx.h"
+#include "../../oxy_gtk.h"
 
 void oxy_UpdateLabel(struct oxy_widget_t *widget)
 {
@@ -37,7 +38,7 @@ void oxy_RenderLabel(struct oxy_widget_t *widget)
 {
 	struct oxy_label_t *label = (struct oxy_label_t *)widget;
 
-	if (widget->state.visible)
+	if (widget->state.visible && label->text)
 	{
 		if (label->wrap)
 		{
@@ -58,5 +59,7 @@ void oxy_RenderLabel(struct oxy_widget_t *widget)
 void oxy_SetLabelText(struct oxy_widget_t *widget, const char *text)
 {
 	struct oxy_label_t *label = (struct oxy_label_t *)widget;
-	strcpy(label->text, text);
+	label->text = (char *)text;
+	widget->size.width = text ? gfx_GetStringWidth(text) : 0;
+	widget->state.redraw = true;
 }

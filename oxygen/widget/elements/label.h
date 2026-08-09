@@ -60,6 +60,8 @@ extern "C"
         int max_lines;
     };
 
+    void oxy_UpdateLabel(struct oxy_widget_t *widget);
+
     /**
      * @brief Renders a label widget on the screen.
      *
