@@ -2,7 +2,8 @@
 #define OXY_SAVE_H
 
 #define OXY_APPVAR_NAME "OXYGEN"
-#define OXY_VERSION "ALPHA v1.0"
+#define OXY_VERSION "1.0"
+#define OXY_SAVE_FORMAT_VERSION 1
 
 #include <tice.h>
 
@@ -22,6 +23,7 @@ oxy_LoadAll()
  * @brief Save all systems to oxygen main app-var.  
  */ 
 void oxy_SaveAll(void);
+bool oxy_SaveAllChecked(void);
 #define oxy_End() \
 oxy_SaveAll()
 
