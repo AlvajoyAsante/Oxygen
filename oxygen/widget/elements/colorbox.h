@@ -48,7 +48,7 @@ extern "C"
 	 */
 	struct oxy_colorbox_t
 	{
-		struct oxy_widget_t *widget;
+		struct oxy_widget_t widget;
 		uint8_t index;
 	};
 

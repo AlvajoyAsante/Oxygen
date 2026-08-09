@@ -11,38 +11,24 @@
 
 void oxy_UpdateColorbox(struct oxy_widget_t *widget)
 {
+    const struct oxy_input_event_t *event = oxy_GetInputEvent();
     if (!widget->state.visible)
         return;
 
-    if (CURSOR_STATE_ID == CURSOR_STATE_IDLE && oxy_CheckCursorOverlap(widget))
+    widget->state.selected = event->hovered == widget || oxy_IsWidgetFocused(widget);
+    if (event->primary_pressed && event->hovered == widget)
     {
-        if (widget->state.clickable)
-        {
-            widget->state.selected = true;
-            CURSOR_STATE_ID = CURSOR_STATE_CLICK;
-        }
-        else
-        {
-            widget->state.selected = false;
-        }
+        oxy_FocusWidget(widget);
+        oxy_CaptureWidget(widget);
     }
-    else
+    if (event->primary_released && event->captured == widget && event->hovered == widget)
     {
-        widget->state.selected = false;
+        ((struct oxy_colorbox_t *)widget)->index++;
+        widget->state.redraw = true;
+        if (widget->cursor_info.left_click)
+            widget->cursor_info.left_click(widget->cursor_info.left_arg);
     }
-
-    if (kb_Data[6] & kb_Enter || kb_Data[1] & kb_2nd)
-    {
-        if (!widget->state.clicked && widget->state.selected)
-        {
-            widget->state.clicked = true;
-            // Pull oxygen color input here.
-        }
-    }
-    else
-    {
-        widget->state.clicked = false;
-    }
+    widget->state.clicked = event->primary_down && event->captured == widget;
 }
 
 void oxy_RenderColorbox(struct oxy_widget_t *widget)
