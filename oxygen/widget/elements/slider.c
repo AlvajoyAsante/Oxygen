@@ -1,5 +1,9 @@
 #include "slider.h"
+#include "scrollbar.h"
 #include "../color.h"
+#include "../util.h"
+#include "../loop.h"
+#include "../../oxy_cursor.h"
 #include "../../oxy_gfx.h"
 
 #include <keypadc.h>
@@ -8,64 +12,78 @@
 void oxy_UpdateSlider(struct oxy_widget_t *widget)
 {
     struct oxy_slider_t *slider = (struct oxy_slider_t *)widget;
+    const struct oxy_input_event_t *event = oxy_GetInputEvent();
 
-    if (widget->state.visible && oxy_CheckCursorOverlap(widget))
+    if (!widget->state.visible)
+        return;
+
+    if (event->primary_pressed && oxy_CheckCursorOverlap(widget))
     {
-        /* Handle key press */
-        bool left_pressed = kb_IsDown(kb_KeyAlpha) && kb_IsDown(kb_KeyLeft) ? true : false ;
-        bool right_pressed = kb_IsDown(kb_KeyAlpha) && kb_IsDown(kb_KeyRight) ? true : false ;
-
-        if (left_pressed || right_pressed)
-        {
-            if (left_pressed) {
-                slider->curr_value--;
-            }
-                
-            
-            if (right_pressed) { 
-                slider->curr_value++;
-            }
-
-            widget->state.redraw = true;
-        }
-
-        /* Handle out of bound value */
-        if (slider->curr_value > slider->max)
-        {
-            slider->curr_value = slider->max;
-        }
-
-        if (slider->curr_value < slider->min)
-        {
-            slider->curr_value = slider->min;
-        }
+        oxy_FocusWidget(widget);
+        oxy_CaptureWidget(widget);
     }
+    widget->state.selected = oxy_CheckCursorOverlap(widget) || oxy_IsWidgetFocused(widget);
+    if (slider->max <= slider->min)
+        return;
+
+    int old_value = slider->curr_value;
+    int step = slider->step > 0 ? slider->step : 1;
+    bool decrease = oxy_IsWidgetFocused(widget) &&
+                    (slider->alignment == SCROLLBAR_VERTICAL ? event->scan_code == sk_Up : event->scan_code == sk_Left);
+    bool increase = oxy_IsWidgetFocused(widget) &&
+                    (slider->alignment == SCROLLBAR_VERTICAL ? event->scan_code == sk_Down : event->scan_code == sk_Right);
+
+    if (event->primary_down && event->captured == widget)
+    {
+        int length = slider->alignment == SCROLLBAR_VERTICAL ? widget->size.height : widget->size.width;
+        int position = slider->alignment == SCROLLBAR_VERTICAL
+                           ? CURSOR_Y_POS - widget->position.y
+                           : CURSOR_X_POS - widget->position.x;
+        if (position < 0)
+            position = 0;
+        if (position > length)
+            position = length;
+        slider->curr_value = slider->min + (slider->max - slider->min) * position / length;
+    }
+    else
+    {
+        if (decrease)
+            slider->curr_value -= step;
+        if (increase)
+            slider->curr_value += step;
+    }
+
+    if (slider->curr_value > slider->max)
+        slider->curr_value = slider->max;
+    if (slider->curr_value < slider->min)
+        slider->curr_value = slider->min;
+    if (old_value != slider->curr_value)
+        widget->state.redraw = true;
 }
 
 void oxy_RenderSlider(struct oxy_widget_t *widget)
 {
     struct oxy_slider_t *slider = (struct oxy_slider_t *)widget;
 
-    /* Check if the slider is visible */
-    if (widget->state.visible && widget->state.redraw)
+    if (!widget->state.visible)
+        return;
+
+    int range = slider->max - slider->min;
+    int offset = slider->curr_value - slider->min;
+    uint16_t track_width = slider->render_value && widget->size.width > 28 ? widget->size.width - 28 : widget->size.width;
+
+    oxy_OutlinedRectangle(widget->position.x, widget->position.y, track_width, widget->size.height,
+                          widget->color.unselected, widget->color.color_a);
+    gfx_SetColor(widget->state.selected ? widget->color.selected : widget->color.color_b);
+    if (range > 0 && track_width > 4)
+        gfx_FillRectangle(widget->position.x + 2, widget->position.y + 2,
+                          (track_width - 4) * offset / range, widget->size.height - 4);
+
+    if (slider->render_value && track_width < widget->size.width)
     {
-        /* Determine the width based on if the user wants to render value of slider*/
-        uint16_t width = slider->render_value ? (widget->size.width - 18) - 1 : widget->size.width;
-
-        /* Determine filled area */
-        float filled = (float)(slider->curr_value - slider->min) / (slider->max - slider->min);
-
-        /* Render the outline */
-        oxy_OutlinedRectangle(widget->position.x, widget->position.y, width, widget->size.height, OXY_BUTTON_FILL_COLOR, OXY_BUTTON_BORDER_COLOR);
-
-        /* Render the inner part */
-        gfx_SetColor(OXY_BUTTON_BG_SELECTED_COLOR);
-        gfx_FillRectangle(widget->position.x + 2, widget->position.y + 2, (width - 4) * filled, widget->size.height - 4);
-
-        /* Render text value */
-        if (slider->render_value)
-        {
-            gfx_PrintStringXY((char *)slider->curr_value, width + 1, widget->position.y);
-        }
+        gfx_SetTextXY(widget->position.x + track_width + 3, widget->position.y + (widget->size.height - 8) / 2);
+        gfx_PrintInt(slider->curr_value, 1);
     }
+
+    widget->state.redraw = false;
 }
