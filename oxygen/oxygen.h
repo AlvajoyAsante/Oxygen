@@ -11,9 +11,19 @@
 #include "oxy_files.h"
 
 /**
+ * Low-level program editor entrypoint.
+ */
+#include "asm/editprgm.h"
+
+/**
  * Drawing and sprite utilities.
  */
 #include "oxy_gfx.h"
+
+/**
+ * High-level 16bpp VRAM drawing API.
+ */
+#include "oxy_vram16.h"
 
 /**
  * Graphical input helpers and HUD widgets.
