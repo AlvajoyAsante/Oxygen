@@ -1,9 +1,12 @@
 #include "oxy_gfx.h"
+#include "oxy_vram16.h"
 #include "gfx/oxy_sprites.h"
+#include "asm/vram16.h"
 
 #include <tice.h>
 #include <graphx.h>
 #include <string.h>
+#include <stdlib.h>
 #include <debug.h>
 
 
@@ -124,6 +127,58 @@ void oxy_SetTextColor(uint8_t foreground, uint8_t background)
 	gfx_SetTextBGColor(background);
 }
 
+static bool oxy_Vram16CanWriteLowLevel(void)
+{
+	if (oxy_Vram16CanDrawNow()) return true;
+	if (oxy_Vram16GetUnsafeModePolicy() == OXY_VRAM16_UNSAFE_FORCE) {
+		oxy_Vram16ClearLastError();
+		return true;
+	}
+	return false;
+}
+
+void oxy_Vram16FillScreen(uint16_t color)
+{
+	if (!oxy_Vram16CanWriteLowLevel()) return;
+	vram16_FillScreen(color);
+}
+
+void oxy_Vram16SetPixel(uint16_t x, uint8_t y, uint16_t color)
+{
+	if (!oxy_Vram16CanWriteLowLevel()) return;
+	vram16_SetPixel(x, y, color);
+}
+
+uint16_t oxy_Vram16GetPixel(uint16_t x, uint8_t y)
+{
+	if (!oxy_Vram16CanDrawNow()) return 0;
+	return vram16_GetPixel(x, y);
+}
+
+void oxy_Vram16HorizLine(uint16_t x, uint8_t y, uint16_t length, uint16_t color)
+{
+	if (!oxy_Vram16CanWriteLowLevel()) return;
+	vram16_HorizLine(x, y, length, color);
+}
+
+void oxy_Vram16VertLine(uint16_t x, uint8_t y, uint16_t length, uint16_t color)
+{
+	if (!oxy_Vram16CanWriteLowLevel()) return;
+	vram16_VertLine(x, y, length, color);
+}
+
+void oxy_Vram16Rectangle(uint16_t x, uint8_t y, uint16_t width, uint16_t height, uint16_t color)
+{
+	if (!oxy_Vram16CanWriteLowLevel()) return;
+	vram16_Rectangle(x, y, width, height, color);
+}
+
+void oxy_Vram16FillRectangle(uint16_t x, uint8_t y, uint16_t width, uint16_t height, uint16_t color)
+{
+	if (!oxy_Vram16CanWriteLowLevel()) return;
+	vram16_FillRectangle(x, y, width, height, color);
+}
+
 // Sprite Routines.
 /**
  * This function is use to replace the color in a sprite.
@@ -189,50 +244,158 @@ gfx_sprite_t* oxy_RepalettizeSprite(gfx_sprite_t *in, const uint16_t *palette, c
 }
 
 // Color Routines.
-/*uint16_t* oxy_BlurSprite(gfx_sprite_t *in)
+static uint16_t oxy_ColorDistance1555(uint16_t a, uint16_t b)
 {
-	
+	int ar = (a >> 10) & 0x1F;
+	int ag = (a >> 5) & 0x1F;
+	int ab = a & 0x1F;
+	int br = (b >> 10) & 0x1F;
+	int bg = (b >> 5) & 0x1F;
+	int bb = b & 0x1F;
+
+	return (uint16_t)(abs(ar - br) + abs(ag - bg) + abs(ab - bb));
 }
 
-void oxy_BlurArea(uint16_t x, uint8_t y, int w, uint8_t h)
+static uint8_t oxy_FindNearestPaletteIndex1555(uint16_t color)
 {
-	int red;
-	int green;
-	int blue;
-	int counter = 0;
-	
-	for (int i = 0; i < h; i++) {
-		for (int j = 0; j < w; j++) {
-			red = green = blue = 0;
-			counter = 0;
-			
-			if (i + 1 < h && j - 1 >= 0) {
-				counter++;
-			}
-			
-			if (j + 1 < w) {
-				counter++;
-			}
-			
-			if (i + 1 < h && j + 1 < w) {
-				counter++;
-			}
-			
-			if (i + 1 < h) {
-				counter++;
-			}
-			
-			if (j - 1 >= 0) {
-				counter++;
-			}
-			
-			if (i - 1 >= 0) {
-				counter++;
-			}	
+	uint8_t best = 0;
+	uint16_t best_dist = 0xFFFF;
+
+	for (uint16_t i = 0; i < 256; i++) {
+		uint16_t dist = oxy_ColorDistance1555(color, gfx_palette[i]);
+		if (dist < best_dist) {
+			best_dist = dist;
+			best = (uint8_t)i;
+			if (dist == 0) break;
 		}
 	}
-	
-}*/
+
+	return best;
+}
+
+/**
+ * This function returns a blurred copy of a sprite using a 3x3 box blur.
+ */
+gfx_sprite_t* oxy_BlurSprite(gfx_sprite_t *in)
+{
+	gfx_sprite_t *out;
+	int width;
+	int height;
+
+	if (!in) return NULL;
+
+	width = in->width;
+	height = in->height;
+	if (width <= 0 || height <= 0) return NULL;
+
+	out = gfx_MallocSprite((uint8_t)width, (uint8_t)height);
+	if (!out) return NULL;
+
+	for (int y = 0; y < height; y++) {
+		for (int x = 0; x < width; x++) {
+			uint16_t r_sum = 0;
+			uint16_t g_sum = 0;
+			uint16_t b_sum = 0;
+			uint16_t count = 0;
+
+			for (int oy = -1; oy <= 1; oy++) {
+				int sy = y + oy;
+				if (sy < 0 || sy >= height) continue;
+
+				for (int ox = -1; ox <= 1; ox++) {
+					uint16_t c1555;
+					int sx = x + ox;
+					if (sx < 0 || sx >= width) continue;
+
+					c1555 = gfx_palette[in->data[sy * width + sx]];
+					r_sum += (uint16_t)((c1555 >> 10) & 0x1F);
+					g_sum += (uint16_t)((c1555 >> 5) & 0x1F);
+					b_sum += (uint16_t)(c1555 & 0x1F);
+					count++;
+				}
+			}
+
+			if (count == 0) {
+				out->data[y * width + x] = in->data[y * width + x];
+			} else {
+				uint16_t avg = (uint16_t)(((r_sum / count) << 10) |
+										  ((g_sum / count) << 5) |
+										  (b_sum / count));
+				out->data[y * width + x] = oxy_FindNearestPaletteIndex1555(avg);
+			}
+		}
+	}
+
+	return out;
+}
+
+/**
+ * This function blurs an on-screen area using a 3x3 box blur.
+ */
+void oxy_BlurArea(uint16_t x, uint8_t y, int w, uint8_t h)
+{
+	int max_w;
+	int max_h;
+	uint8_t *temp;
+
+	if (w <= 0 || h <= 0) return;
+	if (x >= LCD_WIDTH || y >= LCD_HEIGHT) return;
+
+	max_w = (int)LCD_WIDTH - (int)x;
+	max_h = (int)LCD_HEIGHT - (int)y;
+	if (w > max_w) w = max_w;
+	if (h > max_h) h = max_h;
+	if (w <= 0 || h <= 0) return;
+
+	temp = (uint8_t*)malloc((size_t)(w * h));
+	if (!temp) return;
+
+	for (int row = 0; row < h; row++) {
+		for (int col = 0; col < w; col++) {
+			int px = (int)x + col;
+			int py = (int)y + row;
+			uint16_t r_sum = 0;
+			uint16_t g_sum = 0;
+			uint16_t b_sum = 0;
+			uint16_t count = 0;
+
+			for (int oy = -1; oy <= 1; oy++) {
+				int sy = py + oy;
+				if (sy < 0 || sy >= LCD_HEIGHT) continue;
+
+				for (int ox = -1; ox <= 1; ox++) {
+					int sx = px + ox;
+					uint16_t c1555;
+
+					if (sx < 0 || sx >= LCD_WIDTH) continue;
+					c1555 = gfx_palette[gfx_GetPixel((uint24_t)sx, (uint8_t)sy)];
+					r_sum += (uint16_t)((c1555 >> 10) & 0x1F);
+					g_sum += (uint16_t)((c1555 >> 5) & 0x1F);
+					b_sum += (uint16_t)(c1555 & 0x1F);
+					count++;
+				}
+			}
+
+			if (count == 0) {
+				temp[row * w + col] = gfx_GetPixel((uint24_t)px, (uint8_t)py);
+			} else {
+				uint16_t avg = (uint16_t)(((r_sum / count) << 10) |
+										  ((g_sum / count) << 5) |
+										  (b_sum / count));
+				temp[row * w + col] = oxy_FindNearestPaletteIndex1555(avg);
+			}
+		}
+	}
+
+	for (int row = 0; row < h; row++) {
+		for (int col = 0; col < w; col++) {
+			gfx_SetColor(temp[row * w + col]);
+			gfx_SetPixel((uint24_t)((int)x + col), (uint8_t)((int)y + row));
+		}
+	}
+
+	free(temp);
+}
 
 /**
  * Condense Sprite into using a condensed version of Xlibc Palette

@@ -76,6 +76,66 @@ void oxy_OutlinedRoundRectangle(uint16_t x, uint8_t y, uint16_t width,
  */
 void oxy_SetTextColor(uint8_t foreground, uint8_t background);
 
+/**
+ * @brief Fills the full LCD VRAM buffer with a 16bpp RGB1555 color.
+ * @param color RGB1555 color value.
+ */
+void oxy_Vram16FillScreen(uint16_t color);
+
+/**
+ * @brief Writes one pixel directly to the LCD VRAM buffer.
+ * @param x X position in pixels.
+ * @param y Y position in pixels.
+ * @param color RGB1555 color value.
+ */
+void oxy_Vram16SetPixel(uint16_t x, uint8_t y, uint16_t color);
+
+/**
+ * @brief Reads one pixel directly from the LCD VRAM buffer.
+ * @param x X position in pixels.
+ * @param y Y position in pixels.
+ * @return RGB1555 color at the requested location.
+ */
+uint16_t oxy_Vram16GetPixel(uint16_t x, uint8_t y);
+
+/**
+ * @brief Draws a horizontal line directly to LCD VRAM.
+ * @param x Start X position.
+ * @param y Y position.
+ * @param length Line length in pixels.
+ * @param color RGB1555 color value.
+ */
+void oxy_Vram16HorizLine(uint16_t x, uint8_t y, uint16_t length, uint16_t color);
+
+/**
+ * @brief Draws a vertical line directly to LCD VRAM.
+ * @param x X position.
+ * @param y Start Y position.
+ * @param length Line length in pixels.
+ * @param color RGB1555 color value.
+ */
+void oxy_Vram16VertLine(uint16_t x, uint8_t y, uint16_t length, uint16_t color);
+
+/**
+ * @brief Draws a non-filled rectangle directly to LCD VRAM.
+ * @param x Left X position.
+ * @param y Top Y position.
+ * @param width Rectangle width.
+ * @param height Rectangle height.
+ * @param color RGB1555 color value.
+ */
+void oxy_Vram16Rectangle(uint16_t x, uint8_t y, uint16_t width, uint16_t height, uint16_t color);
+
+/**
+ * @brief Draws a filled rectangle directly to LCD VRAM.
+ * @param x Left X position.
+ * @param y Top Y position.
+ * @param width Rectangle width.
+ * @param height Rectangle height.
+ * @param color RGB1555 color value.
+ */
+void oxy_Vram16FillRectangle(uint16_t x, uint8_t y, uint16_t width, uint16_t height, uint16_t color);
+
 #define oxy_RoundRectangle_Upper(x, y, w, h) \
 oxy_RoundRectangle(x, y, w, h, 1)
 
@@ -118,6 +178,22 @@ gfx_sprite_t * oxy_ApplyMaskToSprite(gfx_sprite_t *in, gfx_sprite_t *mask, const
 gfx_sprite_t* oxy_RepalettizeSprite(gfx_sprite_t *in, const uint16_t *palette, const uint8_t palette_size);
 
 // Color Routines.
+/**
+ * @brief Returns a 3x3 box-blurred copy of a sprite.
+ * @param in Source sprite to blur.
+ * @return Newly allocated blurred sprite, or NULL on failure.
+ */
+gfx_sprite_t* oxy_BlurSprite(gfx_sprite_t *in);
+
+/**
+ * @brief Applies a 3x3 box blur to a rectangular screen region.
+ * @param x Left position.
+ * @param y Top position.
+ * @param w Region width.
+ * @param h Region height.
+ */
+void oxy_BlurArea(uint16_t x, uint8_t y, int w, uint8_t h);
+
 /**
  * @brief Converts a sprite to use the condensed xlibc palette.
  * @param in Pointer to an initialized sprite structure.
