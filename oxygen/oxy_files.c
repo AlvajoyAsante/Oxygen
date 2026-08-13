@@ -1,5 +1,6 @@
 #include "oxy_files.h"
 #include "oxy_save.h"
+#include "asm/editprgm.h"
 
 #include <tice.h>
 #include <fileioc.h>
@@ -11,7 +12,12 @@ struct oxy_files_t *oxy_file;
 struct oxy_folders_t *oxy_folder;
 struct oxy_file_system_t oxy_file_system;
 
-void EditPrgm();
+/* Fallback when the asm editor entrypoint is not linked in this build. */
+__attribute__((weak)) void EditPrgm(char *progname, int mode)
+{
+	(void)progname;
+	(void)mode;
+}
 
 
 void oxy_InitFilesStystem(void)
@@ -32,7 +38,7 @@ void oxy_CheckFileSystem(void)
 	ti_var_t slot;
 	
 	while ((file_name = ti_DetectAny(&search_pos, NULL, &type)) != NULL) {
-		if (type == TI_PRGM_TYPE || type == TI_PPRGM_TYPE || type == TI_APPVAR_TYPE) {		
+		if (type == OS_TYPE_PRGM || type == OS_TYPE_PROT_PRGM || type == OS_TYPE_APPVAR) {		
 			if ((*file_name != '!') && (*file_name != '#')) {
 				count++;
 			}
@@ -77,7 +83,7 @@ void oxy_RescanFileSystem(void)
 	struct oxy_files_t *curr_file;
 	
 	while ((file_name = ti_DetectAny(&search_pos, NULL, &type)) != NULL) {
-		if (type == TI_PRGM_TYPE || type == TI_PPRGM_TYPE || type == TI_APPVAR_TYPE) {		
+		if (type == OS_TYPE_PRGM || type == OS_TYPE_PROT_PRGM || type == OS_TYPE_APPVAR) {		
 			if ((*file_name != '!') && (*file_name != '#')) {
 				if (!oxy_FindFile(file_name)) {
 					dbg_sprintf(dbgout, "Rescan: Added File.\n");
@@ -91,17 +97,17 @@ void oxy_RescanFileSystem(void)
 						strncpy(curr_file->name, file_name, sizeof(curr_file->name));
 						
 						switch (type){
-							case (TI_PRGM_TYPE):
+							case (OS_TYPE_PRGM):
 								curr_file->type = OXY_BASIC_TYPE;
 								curr_file->location = 0;
 								break;
 								
-							case (TI_PPRGM_TYPE):
+							case (OS_TYPE_PROT_PRGM):
 								curr_file->type = OXY_PBASIC_TYPE;
 								curr_file->location = 0;
 								break;
 								
-							case (TI_APPVAR_TYPE):
+							case (OS_TYPE_APPVAR):
 								curr_file->type = OXY_APPVAR_TYPE;
 								curr_file->location = 1;
 								break;
@@ -146,7 +152,7 @@ void oxy_DetectAllFiles(void)
 	dbg_sprintf(dbgout, "Oxygen: File System Search Began! \n");
 	
 	while ((file_name = ti_DetectAny(&search_pos, NULL, &type)) != NULL) {
-		if (type == TI_PRGM_TYPE || type == TI_PPRGM_TYPE || type == TI_APPVAR_TYPE) {			
+		if (type == OS_TYPE_PRGM || type == OS_TYPE_PROT_PRGM || type == OS_TYPE_APPVAR) {			
 			if ((*file_name != '!') && (*file_name != '#')) {
                 if ((slot = ti_OpenVar(file_name, "r", type))) {
 					dbg_sprintf(dbgout, "Oxygen: Opened File!, Name: %s\n", file_name);
@@ -161,17 +167,17 @@ void oxy_DetectAllFiles(void)
 					strncpy(curr_file->name, file_name, sizeof(curr_file->name));
 					
 					switch (type){
-						case TI_PRGM_TYPE:
+						case OS_TYPE_PRGM:
 							curr_file->type = OXY_BASIC_TYPE;
 							curr_file->location = 0;
 							break;
 							
-						case TI_PPRGM_TYPE:
+						case OS_TYPE_PROT_PRGM:
 							curr_file->type = OXY_PBASIC_TYPE;
 							curr_file->location = 0;
 							break;
 							
-						case TI_APPVAR_TYPE:
+						case OS_TYPE_APPVAR:
 							curr_file->type = OXY_APPVAR_TYPE;
 							curr_file->location = 1;
 							break;
@@ -314,7 +320,7 @@ void oxy_GetAsmIcons(void)
 		struct oxy_files_t *curr_file = &oxy_file[i];
 		
 		if ((slot = ti_OpenVar(curr_file->name, "r", oxy_GetFileType(curr_file->type)))){
-			if (oxy_GetFileType(curr_file->type) == TI_PPRGM_TYPE) {
+			if (oxy_GetFileType(curr_file->type) == OS_TYPE_PROT_PRGM) {
 				for (int r = 0; r < 20; r++) {
 					ti_Read(&data_pos, 1, 1, slot);
 					
@@ -437,17 +443,17 @@ uint8_t oxy_GetFileType(uint8_t type)
 {
 	switch (type){
 		case OXY_BASIC_TYPE:
-			return TI_PRGM_TYPE;
+			return OS_TYPE_PRGM;
 		
 		case OXY_PBASIC_TYPE: 
 		case OXY_ASM_TYPE:
 		case OXY_C_TYPE: 
 		case OXY_ICE_TYPE:
 		case OXY_ICES_TYPE:
-			return TI_PPRGM_TYPE;
+			return OS_TYPE_PROT_PRGM;
 			
 		case OXY_APPVAR_TYPE: 
-			return TI_APPVAR_TYPE;
+			return OS_TYPE_APPVAR;
 			
 		default:
 			return 255;
@@ -457,25 +463,33 @@ uint8_t oxy_GetFileType(uint8_t type)
 bool oxy_EditPrgm(char *progname, const char *editor_name, os_runprgm_callback_t callback)
 {
 	ti_var_t slot;
+	bool launched = false;
+
+	if (!progname || !*progname) return false;
+
+	if (!(slot = ti_OpenVar(progname, "r", OS_TYPE_PRGM))) {
+		return false;
+	}
+	ti_Close(slot);
 	
 	if (editor_name == NULL && callback == NULL) {
-		if ((slot = ti_OpenVar(progname, "r", TI_PRGM_TYPE))) {
-			ti_Close(slot);
-			gfx_End();
-			oxy_SaveAll();
-			EditPrgm(progname, 0);
+		gfx_End();
+		oxy_SaveAll();
+		EditPrgm(progname, 0);
+		launched = true;
+		return launched;
+	}
+
+	if (!editor_name || !*editor_name) return false;
+
+	if ((slot = ti_OpenVar(editor_name, "r", OS_TYPE_PRGM))){ // Search for Editor
+		ti_Close(slot);
+		if (!ti_SetVar(OS_TYPE_STR, OS_VAR_ANS, progname)){
+			launched = true;
+			os_RunPrgm(editor_name, NULL, 0, callback);
 		}
 	}
 	
-	if ((slot = ti_OpenVar(editor_name, "r", TI_PRGM_TYPE))){ // Search for Editor
-		
-		if ((slot = ti_OpenVar(progname, "r", TI_PRGM_TYPE))){ // Search for Program
-			ti_Close(slot);
-			if (!ti_SetVar(TI_STRING_TYPE, ti_Ans, progname)){
-				os_RunPrgm(editor_name, NULL, 0, callback);
-			}
-		}
-	}
-	
-	return 0;
+	return launched;
 }
+
